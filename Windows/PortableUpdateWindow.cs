@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace SnapPin.Windows;
 
@@ -23,6 +24,7 @@ internal sealed class PortableUpdateWindow : Window
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ShowInTaskbar = true;
+        Icon = BitmapFrame.Create(new Uri("pack://application:,,,/SnapPin;component/Assets/SnapPin-icon-512.png"));
         Topmost = true;
         Background = Brushes.White;
         Foreground = new SolidColorBrush(Color.FromRgb(17, 24, 29));

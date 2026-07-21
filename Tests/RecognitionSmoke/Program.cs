@@ -186,6 +186,7 @@ internal static class Program
             var tray = (System.Windows.Forms.NotifyIcon?)typeof(MainWindow)
                 .GetField("_trayIcon", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .GetValue(window);
+            var taskbarIcon = window.Icon as BitmapSource;
             var hasGitHubUpdateCommand = tray?.ContextMenuStrip?.Items
                 .OfType<System.Windows.Forms.ToolStripItem>()
                 .Any(item => item.Text == "Check for updates…") == true;
@@ -194,6 +195,7 @@ internal static class Program
                 IsColor(pin.Background, 0xC5, 0xE6, 0xF7) &&
                 IsColor(card.Background, 0xFE, 0xFE, 0xFE) &&
                 IsColor(shortcutPanel.BorderBrush, 0xBE, 0xD7, 0xE3) &&
+                taskbarIcon is { PixelWidth: >= 32, PixelHeight: >= 32 } &&
                 hasGitHubUpdateCommand;
             window.DisposeLayoutPreview();
             return matches;
@@ -206,10 +208,12 @@ internal static class Program
             var preferences = new PreferencesWindow(new AppSettings());
             var edition = ((TextBlock)preferences.FindName("EditionText")).Text;
             var copyButton = ((Button)preferences.FindName("CopyVersionButton")).Content as string == "Copy version information";
-            return (Edition: edition, CopyButton: copyButton);
+            var icon = preferences.Icon as BitmapSource;
+            return (Edition: edition, CopyButton: copyButton, Icon: icon is { PixelWidth: >= 32, PixelHeight: >= 32 });
         });
         if (!aboutEdition.Edition.Contains("portable copy", StringComparison.OrdinalIgnoreCase) ||
-            !aboutEdition.CopyButton || !DiagnosticsService.ProductSummary(true).Contains("portable copy", StringComparison.OrdinalIgnoreCase)) return 74;
+            !aboutEdition.CopyButton || !aboutEdition.Icon ||
+            !DiagnosticsService.ProductSummary(true).Contains("portable copy", StringComparison.OrdinalIgnoreCase)) return 74;
         Console.WriteLine("ABOUT EDITION: portable/installed identity and copyable version summary verified");
 
         if (!ElevationService.NeedsElevation(true, false) ||

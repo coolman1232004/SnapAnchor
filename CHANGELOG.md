@@ -2,6 +2,18 @@
 
 All notable user-facing changes should be recorded here. Versions follow semantic versioning where practical.
 
+## [1.2.14] - 2026-07-21
+
+### Fixed
+
+- Taskbar-visible SnapPin windows now explicitly supply the high-resolution SnapPin logo to Windows Shell
+- The dashboard, Preferences, History, custom capture, and portable updater no longer fall back to a blank or generic taskbar tile
+
+### Validation
+
+- Added regression checks requiring valid high-resolution window icons on the dashboard and Preferences dialog
+- Full x64 build, localization audit, smoke-test suite, and isolated live Windows taskbar review pass
+
 ## [1.2.13] - 2026-07-21
 
 ### Added

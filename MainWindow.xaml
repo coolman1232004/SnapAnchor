@@ -1,7 +1,8 @@
 <Window x:Class="SnapPin.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SnapPin" Height="700" Width="920" MinHeight="600" MinWidth="760"
+        Title="SnapPin" Icon="pack://application:,,,/SnapPin;component/Assets/SnapPin-icon-512.png"
+        Height="700" Width="920" MinHeight="600" MinWidth="760"
         Background="#EBF2F5" Foreground="#11181D"
         FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
     <Window.Resources>
