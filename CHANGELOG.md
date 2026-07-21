@@ -2,6 +2,23 @@
 
 All notable user-facing changes should be recorded here. Versions follow semantic versioning where practical.
 
+## [1.2.15] - 2026-07-21
+
+### Added
+
+- Added an explicit **Cancel** action beside Copy and All text for OCR text selections on pinned images
+- Escape now cancels the active text selection before it can close the pinned image
+- Clicking empty image space clears the current OCR text selection
+
+### Changed
+
+- Cancelling a selection keeps OCR text-selectable mode enabled so another selection can begin immediately
+
+### Validation
+
+- Added a pinned-image UI regression requiring the Cancel selection control
+- Full x64 build, three-language localization audit, and smoke-test suite pass with zero warnings or errors
+
 ## [1.2.14] - 2026-07-21
 
 ### Fixed

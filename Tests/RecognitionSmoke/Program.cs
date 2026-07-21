@@ -149,7 +149,8 @@ internal static class Program
             NativeMethods.GetWindowRect(new System.Windows.Interop.WindowInteropHelper(pin).Handle, out var actual);
             var selectableLayers = pin.FindName("SelectableTextLayer") is Canvas &&
                 pin.FindName("LongSelectableTextLayer") is Canvas &&
-                pin.FindName("TextSelectionToolbar") is Border;
+                pin.FindName("TextSelectionToolbar") is Border &&
+                pin.FindName("CancelTextSelectionButton") is Button;
             pin.Close();
             return (Target: target, Actual: actual, SelectableLayers: selectableLayers,
                 SelectableTextDefaultOff: !new AppSettings().PinTextSelectableByDefault);

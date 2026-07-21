@@ -267,7 +267,7 @@ internal static class Program
         using var key = Registry.CurrentUser.CreateSubKey(UninstallKey, writable: true)
             ?? throw new InvalidOperationException("Could not register the uninstaller.");
         key.SetValue("DisplayName", AppName);
-        key.SetValue("DisplayVersion", Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.2.14");
+        key.SetValue("DisplayVersion", Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.2.15");
         key.SetValue("Publisher", "SnapPin");
         key.SetValue("InstallLocation", installDirectory);
         key.SetValue("DisplayIcon", Path.Combine(installDirectory, "SnapPin.exe"));

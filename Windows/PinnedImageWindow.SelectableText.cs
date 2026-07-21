@@ -183,7 +183,15 @@ public partial class PinnedImageWindow
     {
         if (!_textSelectable || sender is not Canvas layer) return;
         var index = HitRecognizedWord(layer, e.GetPosition(layer), false);
-        if (index is null) return;
+        if (index is null)
+        {
+            if (_textSelectionAnchor is not null || _textSelectionEnd is not null)
+            {
+                ClearRecognizedTextSelection();
+                e.Handled = true;
+            }
+            return;
+        }
         _textSelectionAnchor = _textSelectionEnd = index;
         if (e.ClickCount >= 2)
         {
@@ -391,6 +399,13 @@ public partial class PinnedImageWindow
     private void CopyAllRecognizedText_Click(object sender, RoutedEventArgs e)
     {
         CopyRecognizedText(_selectableTextResult?.Text?.Trim());
+    }
+
+    private void CancelTextSelection_Click(object sender, RoutedEventArgs e)
+    {
+        ClearRecognizedTextSelection();
+        Focus();
+        e.Handled = true;
     }
 
     private void CopyRecognizedText(string? text)

@@ -917,6 +917,13 @@ public partial class PinnedImageWindow : Window
             e.Handled = true;
             return;
         }
+        if (_textSelectable && e.Key == Key.Escape &&
+            (_textSelectionAnchor is not null || _textSelectionEnd is not null))
+        {
+            ClearRecognizedTextSelection();
+            e.Handled = true;
+            return;
+        }
         switch (e.Key)
         {
             case Key.Escape: Close(); break;

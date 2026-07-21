@@ -54,10 +54,10 @@ Do not commit the compiled ZIP or installer into Git history. GitHub blocks ordi
 
    ```powershell
    .\Tests\Run-Smoke.ps1
-   .\packaging\Build-Packages.ps1 -Version 1.2.14
+   .\packaging\Build-Packages.ps1 -Version 1.2.15
    ```
 
-2. Create a version tag such as `v1.2.14` and a matching release title.
+2. Create a version tag such as `v1.2.15` and a matching release title.
 3. Upload these files from `dist\` as release assets:
    - `SnapPin-Setup-win-x64.exe`
    - `SnapPin-Portable-win-x64.zip`

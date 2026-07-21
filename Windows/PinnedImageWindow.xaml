@@ -62,6 +62,10 @@
                             ToolTip="Copy all recognized text" Click="CopyAllRecognizedText_Click">
                         <StackPanel Orientation="Horizontal"><Path Width="15" Height="15" Margin="0,0,5,0" Data="M4,5 H20 M4,10 H20 M4,15 H15 M4,20 H17" Stroke="White" StrokeThickness="2" Fill="Transparent" Stretch="Uniform"/><TextBlock Text="All text" VerticalAlignment="Center"/></StackPanel>
                     </Button>
+                    <Button x:Name="CancelTextSelectionButton" Width="72" Height="34" Padding="5,2" Foreground="White" Background="Transparent" BorderThickness="0"
+                            ToolTip="Cancel" Click="CancelTextSelection_Click">
+                        <StackPanel Orientation="Horizontal"><Path Width="15" Height="15" Margin="0,0,5,0" Data="M5,5 L19,19 M19,5 L5,19" Stroke="White" StrokeThickness="2" Fill="Transparent" Stretch="Uniform"/><TextBlock Text="Cancel" VerticalAlignment="Center"/></StackPanel>
+                    </Button>
                 </StackPanel>
             </Border>
         </Grid>
