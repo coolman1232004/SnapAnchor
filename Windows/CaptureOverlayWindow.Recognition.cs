@@ -32,6 +32,8 @@ public partial class CaptureOverlayWindow
         var centerX = (int)Math.Round(screenRegion.X + screenRegion.Width / 2);
         var centerY = (int)Math.Round(screenRegion.Y + screenRegion.Height / 2);
         var originalCursor = Forms.Cursor.Position;
+        var scrollPoint = new NativeMethods.NativePoint { X = centerX, Y = centerY };
+        var scrollTarget = IntPtr.Zero;
         LongCaptureProgressWindow? progressWindow = null;
         var stopRequested = false;
 
@@ -40,11 +42,11 @@ public partial class CaptureOverlayWindow
             Hide();
             await Task.Delay(220);
             NativeMethods.SetCursorPos(centerX, centerY);
-            var target = NativeMethods.WindowFromPoint(new NativeMethods.NativePoint { X = centerX, Y = centerY });
-            if (target != IntPtr.Zero)
+            scrollTarget = NativeMethods.WindowFromPoint(scrollPoint);
+            if (scrollTarget != IntPtr.Zero)
             {
-                var root = NativeMethods.GetAncestor(target, NativeMethods.GaRoot);
-                NativeMethods.SetForegroundWindow(root == IntPtr.Zero ? target : root);
+                var root = NativeMethods.GetAncestor(scrollTarget, NativeMethods.GaRoot);
+                NativeMethods.SetForegroundWindow(root == IntPtr.Zero ? scrollTarget : root);
             }
             await Task.Delay(140);
             progressWindow = new LongCaptureProgressWindow();
@@ -54,11 +56,15 @@ public partial class CaptureOverlayWindow
             var result = await ScrollingCaptureService.CaptureAsync(
                 screenRegion,
                 _settings,
+                scrollTarget,
+                scrollPoint,
                 progress: progress,
                 stopRequested: () => stopRequested);
             progressWindow.Close();
             progressWindow = null;
             NativeMethods.SetCursorPos(originalCursor.X, originalCursor.Y);
+            if (result.FrameCount <= 1 && !result.Cancelled)
+                throw new InvalidOperationException(L("The selected content did not scroll. Place the pointer over a scrollable page and try again."));
             Close();
             Clipboard.SetImage(result.Image);
             HistoryService.Add(result.Image, sourceKind: "Scrolling");

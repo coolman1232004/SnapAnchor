@@ -1467,4 +1467,6 @@
   <data name="Administrator permission is required. Waiting for approval..." xml:space="preserve"><value>需要系統管理員權限。正在等待授權...</value></data>
   <data name="SnapAnchor will retry the portable update with administrator permission." xml:space="preserve"><value>SnapAnchor 將使用系統管理員權限重試可攜版更新。</value></data>
   <data name="SnapAnchor could not restart the portable updater as administrator: {0}" xml:space="preserve"><value>SnapAnchor 無法以系統管理員身分重新啟動可攜版更新程式：{0}</value></data>
+  <data name="Back to SnapAnchor" xml:space="preserve"><value>返回 SnapAnchor</value></data>
+  <data name="The selected content did not scroll. Place the pointer over a scrollable page and try again." xml:space="preserve"><value>所選內容未捲動。請將指標放在可捲動頁面上，然後重試。</value></data>
 </root>

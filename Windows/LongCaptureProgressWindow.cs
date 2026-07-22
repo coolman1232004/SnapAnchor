@@ -28,7 +28,7 @@ internal sealed class LongCaptureProgressWindow : Window
         _status = new TextBlock
         {
             Text = LocalizationService.Current("Preparing long capture..."),
-            Foreground = new SolidColorBrush(Color.FromRgb(17, 24, 29)),
+            Foreground = new SolidColorBrush(Color.FromRgb(28, 25, 23)),
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis
         };
@@ -39,7 +39,7 @@ internal sealed class LongCaptureProgressWindow : Window
             Height = 30,
             Padding = new Thickness(8, 3, 8, 3),
             Margin = new Thickness(10, 0, 0, 0),
-            Background = new SolidColorBrush(Color.FromRgb(197, 230, 247))
+            Background = new SolidColorBrush(Color.FromRgb(231, 229, 228))
         };
         stop.Click += (_, _) => StopRequested?.Invoke(this, EventArgs.Empty);
         var row = new DockPanel { LastChildFill = true };
@@ -48,8 +48,8 @@ internal sealed class LongCaptureProgressWindow : Window
         row.Children.Add(_status);
         Content = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(248, 255, 255, 255)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(44, 151, 142)),
+            Background = new SolidColorBrush(Color.FromArgb(248, 250, 249, 247)),
+            BorderBrush = new SolidColorBrush(Color.FromRgb(120, 113, 108)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(12, 8, 9, 8),

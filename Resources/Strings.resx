@@ -1467,4 +1467,6 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="Administrator permission is required. Waiting for approval..." xml:space="preserve"><value>Administrator permission is required. Waiting for approval...</value></data>
   <data name="SnapAnchor will retry the portable update with administrator permission." xml:space="preserve"><value>SnapAnchor will retry the portable update with administrator permission.</value></data>
   <data name="SnapAnchor could not restart the portable updater as administrator: {0}" xml:space="preserve"><value>SnapAnchor could not restart the portable updater as administrator: {0}</value></data>
+  <data name="Back to SnapAnchor" xml:space="preserve"><value>Back to SnapAnchor</value></data>
+  <data name="The selected content did not scroll. Place the pointer over a scrollable page and try again." xml:space="preserve"><value>The selected content did not scroll. Place the pointer over a scrollable page and try again.</value></data>
 </root>
