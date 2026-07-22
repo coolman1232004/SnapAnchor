@@ -76,6 +76,7 @@ public partial class PinnedImageWindow : Window
     private int? _textSelectionEnd;
     private Point? _textSelectionToolbarPosition;
     private readonly bool _enableSelectableTextOnLoad;
+    private PinnedAnnotationOverlayWindow? _annotationOverlay;
 
     public PinnedImageWindow(BitmapSource source, bool startEditing = false, string? groupName = null, string? backgroundMode = null,
         string? historyRecordId = null, bool applyTextSelectableDefault = true)
@@ -119,6 +120,8 @@ public partial class PinnedImageWindow : Window
         };
         Closed += (_, _) =>
         {
+            _annotationOverlay?.Close();
+            _annotationOverlay = null;
             _zoomAnimationTimer.Stop();
             _zoomBadgeTimer.Stop();
             _refreshTimer.Stop();
@@ -438,14 +441,50 @@ public partial class PinnedImageWindow : Window
 
     public void BeginEditMode()
     {
+        if (_annotationOverlay is not null)
+        {
+            _annotationOverlay.Activate();
+            return;
+        }
         if (_inlineMode != "None") return;
-        BeginInlineMode("Edit", 92);
-        InlineEditor.Visibility = Visibility.Visible;
+
+        SetClickThrough(false);
+        HideSelectableText();
+        _inlineMode = "Edit";
+
+        var editSource = _source;
+        IReadOnlyList<AnnotationItem>? annotations = null;
         if (!string.IsNullOrWhiteSpace(_historyRecordId) && HistoryService.Find(_historyRecordId) is { } record && record.HasEditableAnnotations)
-            InlineEditor.LoadImage(HistoryService.LoadBaseImage(record), HistoryService.LoadAnnotations(record));
-        else
-            InlineEditor.LoadImage(_source);
-        InlineEditor.Focus();
+        {
+            editSource = HistoryService.LoadBaseImage(record);
+            annotations = HistoryService.LoadAnnotations(record);
+        }
+
+        // The original pin remains the only visible image. For an editable
+        // document, show its base image here and render annotations in the
+        // transparent overlay so existing marks are not drawn twice.
+        PinnedImage.Source = editSource;
+        LongPinnedImage.Source = editSource;
+
+        var pinBounds = new Rect(Left, Top, Math.Max(1, ActualWidth), Math.Max(1, ActualHeight));
+        var overlay = new PinnedAnnotationOverlayWindow(editSource, annotations, pinBounds)
+        {
+            Owner = this
+        };
+        _annotationOverlay = overlay;
+        overlay.Applied += ApplyEditedImage;
+        overlay.DocumentStored += PersistEditedDocument;
+        overlay.Closed += (_, _) =>
+        {
+            if (!ReferenceEquals(_annotationOverlay, overlay)) return;
+            _annotationOverlay = null;
+            _inlineMode = "None";
+            PinnedImage.Source = _source;
+            LongPinnedImage.Source = _source;
+            ShowImageSurface();
+            Focus();
+        };
+        overlay.Show();
     }
 
     public void BeginCropMode()

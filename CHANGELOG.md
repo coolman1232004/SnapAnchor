@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.3] - 2026-07-22
+
+- Pinned-image **Show toolbar** now keeps the original pin as the only visible image
+- The annotation layer is transparent and anchored to the original pin instead of opening a replacement image surface
+- The toolbar uses the capture-style grip and stays directly beneath the pinned image
+- Added an explicit **Cancel** action that closes the toolbar without changing the pin
+- Added regression coverage for transparent editing, Cancel visibility, and lossless output
+
 ## [2.0.2] - 2026-07-22
 
 - Existing portable folders now remove the obsolete previous-name executable during in-place update or the next SnapAnchor startup

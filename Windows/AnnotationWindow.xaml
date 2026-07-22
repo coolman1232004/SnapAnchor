@@ -30,6 +30,11 @@
             <StackPanel>
                 <Border x:Name="PrimaryToolbarFrame" HorizontalAlignment="Left" Background="{DynamicResource ToolbarSurfaceBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="1" CornerRadius="7" Padding="{DynamicResource ToolbarFramePadding}" SnapsToDevicePixels="True">
                     <StackPanel Orientation="Horizontal">
+                        <Grid Width="{DynamicResource ToolbarGripWidth}" Height="{DynamicResource ToolbarButtonSize}" Margin="0,0,2,0" IsHitTestVisible="False">
+                            <UniformGrid Rows="3" Columns="2" Width="8" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/>
+                            </UniformGrid>
+                        </Grid>
                         <WrapPanel x:Name="ToolPanel">
                             <Button x:Name="RectangleToolButton" Style="{StaticResource IconButton}" Tag="Rectangle" ToolTip="Rectangle" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarRectangleIcon}"/></Button>
                             <Button x:Name="EllipseToolButton" Style="{StaticResource IconButton}" Tag="Ellipse" ToolTip="Ellipse" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarEllipseIcon}"/></Button>
@@ -49,7 +54,7 @@
                         <Button x:Name="SaveActionButton" Style="{StaticResource ActionIconButton}" ToolTip="Save image" Click="Save_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarSaveIcon}"/></Button>
                         <Button x:Name="CopyActionButton" Style="{StaticResource ActionIconButton}" ToolTip="Copy image" Click="Copy_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarCopyIcon}"/></Button>
                         <Button x:Name="ApplyActionButton" Style="{StaticResource ActionIconButton}" ToolTip="Finish" Click="Apply_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarApplyIcon}"/></Button>
-                        <Button x:Name="CancelActionButton" Visibility="Collapsed" Click="Cancel_Click"/>
+                        <Button x:Name="CancelActionButton" Style="{StaticResource ActionIconButton}" Visibility="Collapsed" ToolTip="Cancel" Click="Cancel_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarCancelIcon}"/></Button>
                     </StackPanel>
                 </Border>
 

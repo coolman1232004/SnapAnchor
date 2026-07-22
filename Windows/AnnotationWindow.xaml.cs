@@ -61,6 +61,7 @@ public partial class AnnotationEditorControl : UserControl
     private FrameworkElement? _customToolCursor;
     private bool _customToolCursorCentered;
     private bool _surfacePointerInside;
+    private bool _externalBackgroundMode;
     private string _selectedColor = "#FFEF4444";
     private readonly Dictionary<string, double> _toolSizes = new(StringComparer.OrdinalIgnoreCase);
 
@@ -103,6 +104,12 @@ public partial class AnnotationEditorControl : UserControl
         if (FindToolButton(_tool) is not { Visibility: Visibility.Visible } currentButton && FirstVisibleToolButton() is { } firstButton)
             ActivateTool(firstButton.Tag as string ?? "Rectangle", firstButton);
         Focus();
+    }
+
+    internal void SetExternalBackgroundMode(bool enabled)
+    {
+        _externalBackgroundMode = enabled;
+        BackgroundImage.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
     }
 
     internal void ApplyToolbarConfiguration(IEnumerable<string>? order, IEnumerable<string>? enabled)
@@ -373,7 +380,7 @@ public partial class AnnotationEditorControl : UserControl
     }
 
     internal void ConfigureCaptureOverlay(Rect surfaceBounds, Size viewport, Rect? toolbarAnchor = null, bool showActions = false,
-        double? toolbarLeft = null, double? toolbarTop = null, bool showPrimaryToolbar = true)
+        double? toolbarLeft = null, double? toolbarTop = null, bool showPrimaryToolbar = true, bool showCancelAction = false)
     {
         _captureOverlayMode = true;
         _captureSurfaceBounds = surfaceBounds;
@@ -387,7 +394,7 @@ public partial class AnnotationEditorControl : UserControl
         CopyActionButton.Visibility = showActions ? Visibility.Visible : Visibility.Collapsed;
         SaveActionButton.Visibility = showActions ? Visibility.Visible : Visibility.Collapsed;
         ApplyActionButton.Visibility = showActions ? Visibility.Visible : Visibility.Collapsed;
-        CancelActionButton.Visibility = Visibility.Collapsed;
+        CancelActionButton.Visibility = showCancelAction ? Visibility.Visible : Visibility.Collapsed;
         PrimaryToolbarFrame.Visibility = showPrimaryToolbar ? Visibility.Visible : Visibility.Collapsed;
         Grid.SetRowSpan(SurfaceHost, 2);
         SurfaceHost.BorderThickness = new Thickness(0);
@@ -913,19 +920,28 @@ public partial class AnnotationEditorControl : UserControl
         CommitTextEditor();
         var selected = _selectedId;
         var cursorVisibility = ToolCursorLayer.Visibility;
-        _selectedId = null;
-        ToolCursorLayer.Visibility = Visibility.Collapsed;
-        RenderAnnotations();
-        Surface.Measure(new Size(_source.PixelWidth, _source.PixelHeight));
-        Surface.Arrange(new Rect(0, 0, _source.PixelWidth, _source.PixelHeight));
-        Surface.UpdateLayout();
-        var result = new RenderTargetBitmap(_source.PixelWidth, _source.PixelHeight, 96, 96, PixelFormats.Pbgra32);
-        result.Render(Surface);
-        result.Freeze();
-        _selectedId = selected;
-        ToolCursorLayer.Visibility = cursorVisibility;
-        RenderAnnotations();
-        return result;
+        var backgroundVisibility = BackgroundImage.Visibility;
+        try
+        {
+            _selectedId = null;
+            ToolCursorLayer.Visibility = Visibility.Collapsed;
+            if (_externalBackgroundMode) BackgroundImage.Visibility = Visibility.Visible;
+            RenderAnnotations();
+            Surface.Measure(new Size(_source.PixelWidth, _source.PixelHeight));
+            Surface.Arrange(new Rect(0, 0, _source.PixelWidth, _source.PixelHeight));
+            Surface.UpdateLayout();
+            var result = new RenderTargetBitmap(_source.PixelWidth, _source.PixelHeight, 96, 96, PixelFormats.Pbgra32);
+            result.Render(Surface);
+            result.Freeze();
+            return result;
+        }
+        finally
+        {
+            BackgroundImage.Visibility = backgroundVisibility;
+            _selectedId = selected;
+            ToolCursorLayer.Visibility = cursorVisibility;
+            RenderAnnotations();
+        }
     }
 
     internal AnnotationAppliedEventArgs SnapshotDocument()

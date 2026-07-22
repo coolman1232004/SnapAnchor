@@ -191,15 +191,27 @@ internal static class Program
 
         var sharpnessPolicy = RunSta(() =>
         {
+            var source = CreatePatternImage(160, 100);
             var editor = new AnnotationEditorControl();
-            editor.LoadImage(CreatePatternImage(160, 100));
-            editor.ConfigureCaptureOverlay(new Rect(20, 15, 160, 100), new Size(600, 300));
+            editor.LoadImage(source);
+            editor.SetExternalBackgroundMode(true);
+            editor.ConfigureCaptureOverlay(new Rect(20, 15, 160, 100), new Size(600, 300),
+                showActions: true, showCancelAction: true);
             var surfaceHost = (Border)editor.FindName("SurfaceHost");
             var background = (Image)editor.FindName("BackgroundImage");
-            return (Border: surfaceHost.BorderThickness, Scaling: RenderOptions.GetBitmapScalingMode(background));
+            var cancel = (Button)editor.FindName("CancelActionButton");
+            var flattened = editor.Flatten();
+            return (Border: surfaceHost.BorderThickness,
+                Scaling: RenderOptions.GetBitmapScalingMode(background),
+                ExternalBackgroundHidden: background.Visibility == Visibility.Collapsed,
+                CancelVisible: cancel.Visibility == Visibility.Visible,
+                FlattenedSizeMatches: flattened.PixelWidth == source.PixelWidth && flattened.PixelHeight == source.PixelHeight);
         });
-        if (sharpnessPolicy.Border != new Thickness(0) || sharpnessPolicy.Scaling != BitmapScalingMode.NearestNeighbor) return 35;
-        Console.WriteLine("ANNOTATION SHARPNESS: inline surface uses exact bounds and non-blurring sampling");
+        if (sharpnessPolicy.Border != new Thickness(0) ||
+            sharpnessPolicy.Scaling != BitmapScalingMode.NearestNeighbor ||
+            !sharpnessPolicy.ExternalBackgroundHidden || !sharpnessPolicy.CancelVisible ||
+            !sharpnessPolicy.FlattenedSizeMatches) return 35;
+        Console.WriteLine("PIN TOOLBAR: transparent edit surface, visible Cancel action and lossless flattening verified");
 
         var dashboardPaletteMatches = RunSta(() =>
         {
