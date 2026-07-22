@@ -6,7 +6,6 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Forms = System.Windows.Forms;
 
 namespace SnapAnchor.Windows;
 
@@ -43,6 +42,10 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
         SourceInitialized += (_, _) => BeginPlacementStabilization();
 
         _editor = new AnnotationEditorControl();
+        // Keep one almost-transparent hit-test layer alive until the monitor
+        // DPI transition settles; a fully transparent layered window lets
+        // pointer input fall through to the pin beneath it.
+        _editor.Opacity = 0.01;
         Content = _editor;
         _editor.LoadImage(source, items);
         _editor.SetExternalBackgroundMode(true);
@@ -123,7 +126,7 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
             !NativeMethods.GetWindowRect(pinHandle, out var pinPixels)) return;
 
         var dpi = DpiLayoutService.WindowScale(this);
-        var actualPinBounds = PhysicalBoundsToOverlay(pinPixels, overlayPixels, dpi.DpiScaleX, dpi.DpiScaleY);
+        var actualPinBounds = DpiLayoutService.PhysicalBoundsToLogical(this, pinPixels, overlayPixels);
         var overlayViewport = new Size(
             Math.Max(1, overlayPixels.Width / Math.Max(0.1, dpi.DpiScaleX)),
             Math.Max(1, overlayPixels.Height / Math.Max(0.1, dpi.DpiScaleY)));
@@ -133,6 +136,7 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
             overlayViewport,
             actualPinBounds,
             resetToolbarPosition: true);
+        if (_placementPasses <= 10) _editor.Opacity = 1;
     }
 
     internal static Rect PhysicalBoundsToOverlay(
@@ -160,8 +164,9 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return;
         var ownerHandle = Owner is null ? IntPtr.Zero : new WindowInteropHelper(Owner).Handle;
-        var screen = ownerHandle == IntPtr.Zero ? Forms.Screen.PrimaryScreen : Forms.Screen.FromHandle(ownerHandle);
-        var bounds = screen?.Bounds ?? Forms.SystemInformation.VirtualScreen;
+        var bounds = ownerHandle == IntPtr.Zero
+            ? DisplayTopologyService.VirtualBoundsPixels()
+            : DisplayTopologyService.MonitorBoundsForWindowPixels(ownerHandle);
         NativeMethods.SetWindowPos(handle, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height,
             NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);
     }

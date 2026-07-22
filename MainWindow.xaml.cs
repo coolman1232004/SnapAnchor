@@ -453,7 +453,7 @@ public partial class MainWindow : Window
                 ShowError("No active window", "SnapAnchor could not find another visible window to capture.");
                 return;
             }
-            var virtualBounds = Forms.SystemInformation.VirtualScreen;
+            var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
             var region = new Int32Rect(
                 (int)Math.Round(detected.Bounds.X - virtualBounds.Left),
                 (int)Math.Round(detected.Bounds.Y - virtualBounds.Top),

@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SkiaSharp;
-using Forms = System.Windows.Forms;
 using Drawing = System.Drawing;
 using DrawingImaging = System.Drawing.Imaging;
 
@@ -31,7 +30,7 @@ internal static partial class CaptureService
 
     public static BitmapSource CaptureVirtualScreen(bool includeCursor = false)
     {
-        var bounds = Forms.SystemInformation.VirtualScreen;
+        var bounds = DisplayTopologyService.VirtualBoundsPixels();
         return CaptureBounds(bounds, includeCursor);
     }
 
@@ -59,13 +58,37 @@ internal static partial class CaptureService
         {
             var source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
                 handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-            source.Freeze();
+            source = NormalizeDpi96(source);
             return CaptureExclusionService.Apply(source, bounds, SettingsService.Load());
         }
         finally
         {
             NativeMethods.DeleteObject(handle);
         }
+    }
+
+    internal static BitmapSource NormalizeDpi96(BitmapSource source)
+    {
+        if (Math.Abs(source.DpiX - 96) < 0.01 && Math.Abs(source.DpiY - 96) < 0.01)
+        {
+            if (!source.IsFrozen) source.Freeze();
+            return source;
+        }
+
+        var stride = Math.Max(1, (source.PixelWidth * source.Format.BitsPerPixel + 7) / 8);
+        var pixels = new byte[stride * source.PixelHeight];
+        source.CopyPixels(pixels, stride, 0);
+        var normalized = BitmapSource.Create(
+            source.PixelWidth,
+            source.PixelHeight,
+            96,
+            96,
+            source.Format,
+            source.Palette,
+            pixels,
+            stride);
+        normalized.Freeze();
+        return normalized;
     }
 
     private static void DrawCursor(Drawing.Graphics graphics, Drawing.Rectangle bounds)

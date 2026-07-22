@@ -343,7 +343,7 @@ public partial class CaptureOverlayWindow : Window
         RenderSelectionMask();
 
         var pixelRegion = SelectedPixelRegion();
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         SizeText.Text = $"{virtualBounds.Left + pixelRegion.X}, {virtualBounds.Top + pixelRegion.Y}   {pixelRegion.Width} × {pixelRegion.Height} px";
         SizeBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(SizeBadge, Math.Min(ActualWidth - 100, _selection.X));
@@ -353,7 +353,7 @@ public partial class CaptureOverlayWindow : Window
     private void UpdateDetectedRegion(Point overlayPoint)
     {
         if (_overlayHandle == IntPtr.Zero) return;
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         var screenPoint = OverlayToScreen(overlayPoint);
         _detectionCandidates = ElementDetectionService.DetectHierarchy(screenPoint, _overlayHandle);
         if (_detectionCandidates.Count == 0)
@@ -372,7 +372,7 @@ public partial class CaptureOverlayWindow : Window
         if (_detectionCandidates.Count == 0) return;
         _detectionIndex = Math.Clamp(_detectionIndex, 0, _detectionCandidates.Count - 1);
         var detected = _detectionCandidates[_detectionIndex];
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
 
         var topLeft = ScreenToOverlay(new Point(detected.Bounds.Left, detected.Bounds.Top));
         var bottomRight = ScreenToOverlay(new Point(detected.Bounds.Right, detected.Bounds.Bottom));
@@ -585,7 +585,7 @@ public partial class CaptureOverlayWindow : Window
 
     private Int32Rect PixelRegion(Rect area)
     {
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         var topLeft = OverlayToScreen(area.TopLeft);
         var bottomRight = OverlayToScreen(area.BottomRight);
         return CaptureCoordinateService.ToBitmapRegion(topLeft, bottomRight, virtualBounds, _screen.PixelWidth, _screen.PixelHeight);
@@ -594,7 +594,7 @@ public partial class CaptureOverlayWindow : Window
     private void FitToVirtualScreenPixels()
     {
         var handle = new WindowInteropHelper(this).Handle;
-        var bounds = Forms.SystemInformation.VirtualScreen;
+        var bounds = DisplayTopologyService.VirtualBoundsPixels();
         if (handle != IntPtr.Zero)
             NativeMethods.SetWindowPos(handle, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height, NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);
     }
@@ -604,7 +604,7 @@ public partial class CaptureOverlayWindow : Window
         try { return OverlayCanvas.PointToScreen(point); }
         catch (InvalidOperationException)
         {
-            var bounds = Forms.SystemInformation.VirtualScreen;
+            var bounds = DisplayTopologyService.VirtualBoundsPixels();
             return new Point(
                 bounds.Left + point.X * _screen.PixelWidth / Math.Max(1, ActualWidth),
                 bounds.Top + point.Y * _screen.PixelHeight / Math.Max(1, ActualHeight));
@@ -616,7 +616,7 @@ public partial class CaptureOverlayWindow : Window
         try { return OverlayCanvas.PointFromScreen(point); }
         catch (InvalidOperationException)
         {
-            var bounds = Forms.SystemInformation.VirtualScreen;
+            var bounds = DisplayTopologyService.VirtualBoundsPixels();
             return new Point(
                 (point.X - bounds.Left) * ActualWidth / _screen.PixelWidth,
                 (point.Y - bounds.Top) * ActualHeight / _screen.PixelHeight);
@@ -812,7 +812,7 @@ public partial class CaptureOverlayWindow : Window
         HistoryService.RememberLastRegion(SelectedPixelRegion());
         AutoSave(image);
         var pixelRegion = SelectedPixelRegion();
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         var pinBounds = new System.Drawing.Rectangle(
             virtualBounds.Left + pixelRegion.X,
             virtualBounds.Top + pixelRegion.Y,
@@ -831,7 +831,7 @@ public partial class CaptureOverlayWindow : Window
             ? direction >= 0 ? 0 : _regionHistory.Count - 1
             : (_regionHistoryIndex + direction + _regionHistory.Count) % _regionHistory.Count;
         var region = _regionHistory[_regionHistoryIndex];
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         var topLeft = ScreenToOverlay(new Point(virtualBounds.Left + region.X, virtualBounds.Top + region.Y));
         var bottomRight = ScreenToOverlay(new Point(virtualBounds.Left + region.X + region.Width, virtualBounds.Top + region.Y + region.Height));
         _selection = Rect.Intersect(new Rect(0, 0, ActualWidth, ActualHeight), new Rect(topLeft, bottomRight));

@@ -28,6 +28,21 @@ internal static class Program
         CompatibilitySmoke.Run(CreatePatternImage);
         UpdateUiSmoke.Run();
 
+        var physicalUnion = DisplayTopologyService.UnionBounds(
+        [
+            new Drawing.Rectangle(-1920, 0, 1920, 1080),
+            new Drawing.Rectangle(0, -200, 2560, 1440)
+        ]);
+        if (physicalUnion != new Drawing.Rectangle(-1920, -200, 4480, 1440)) return 84;
+        var physicalDesktop = DisplayTopologyService.VirtualBoundsPixels();
+        if (physicalDesktop.Width <= 0 || physicalDesktop.Height <= 0) return 85;
+
+        var nonStandardDpi = BitmapSource.Create(7, 5, 144, 120, PixelFormats.Bgra32, null, new byte[7 * 5 * 4], 7 * 4);
+        var normalizedDpi = CaptureService.NormalizeDpi96(nonStandardDpi);
+        if (normalizedDpi.PixelWidth != 7 || normalizedDpi.PixelHeight != 5 ||
+            Math.Abs(normalizedDpi.DpiX - 96) > 0.01 || Math.Abs(normalizedDpi.DpiY - 96) > 0.01) return 86;
+        Console.WriteLine($"PHYSICAL DISPLAY PIPELINE: {physicalDesktop} with lossless 96-DPI bitmap normalization verified");
+
         var portableCleanupRoot = Path.Combine(Path.GetTempPath(), $"snapanchor-portable-cleanup-{Guid.NewGuid():N}");
         try
         {
@@ -253,14 +268,12 @@ internal static class Program
 
         var livePinOverlay = RunSta(() =>
         {
-            var targetScreen = System.Windows.Forms.Screen.AllScreens
-                .OrderBy(screen => screen.Primary)
-                .First();
+            var targetScreen = DisplayTopologyService.EnumerateMonitorBoundsPixels().First();
             var targetBounds = new Drawing.Rectangle(
-                targetScreen.WorkingArea.Left + 48,
-                targetScreen.WorkingArea.Top + 48,
-                Math.Min(320, Math.Max(160, targetScreen.WorkingArea.Width - 96)),
-                Math.Min(180, Math.Max(100, targetScreen.WorkingArea.Height - 96)));
+                targetScreen.Left + 48,
+                targetScreen.Top + 48,
+                Math.Min(320, Math.Max(160, targetScreen.Width - 96)),
+                Math.Min(180, Math.Max(100, targetScreen.Height - 96)));
             var pin = new PinnedImageWindow(CreatePatternImage(320, 180), applyTextSelectableDefault: false)
             {
                 Width = 320,
@@ -274,11 +287,19 @@ internal static class Program
                 pin.SetScreenPixelBounds(targetBounds);
                 pin.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
                 pin.BeginEditMode();
-                pin.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+                var placementFrame = new System.Windows.Threading.DispatcherFrame();
+                var placementWait = new System.Windows.Threading.DispatcherTimer(
+                    TimeSpan.FromMilliseconds(180),
+                    System.Windows.Threading.DispatcherPriority.Background,
+                    (_, _) => placementFrame.Continue = false,
+                    pin.Dispatcher);
+                placementWait.Start();
+                System.Windows.Threading.Dispatcher.PushFrame(placementFrame);
+                placementWait.Stop();
                 overlay = (PinnedAnnotationOverlayWindow?)typeof(PinnedImageWindow)
                     .GetField("_annotationOverlay", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                     .GetValue(pin);
-                if (overlay is null) return (ReceivesPointer: false, Aligned: false, MatchesOwnerMonitor: false);
+                if (overlay is null) return (ReceivesPointer: false, Aligned: false, MatchesOwnerMonitor: false, Visible: false);
 
                 overlay.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
                 var editor = (AnnotationEditorControl)typeof(PinnedAnnotationOverlayWindow)
@@ -299,10 +320,11 @@ internal static class Program
                     ReceivesPointer: topWindow == overlayHandle,
                     Aligned: Math.Abs(pinTopLeft.X - surfaceTopLeft.X) < 2 &&
                         Math.Abs(pinTopLeft.Y - surfaceTopLeft.Y) < 2,
-                    MatchesOwnerMonitor: Math.Abs(overlayPixels.Left - targetScreen.Bounds.Left) <= 1 &&
-                        Math.Abs(overlayPixels.Top - targetScreen.Bounds.Top) <= 1 &&
-                        Math.Abs(overlayPixels.Width - targetScreen.Bounds.Width) <= 1 &&
-                        Math.Abs(overlayPixels.Height - targetScreen.Bounds.Height) <= 1);
+                    MatchesOwnerMonitor: Math.Abs(overlayPixels.Left - targetScreen.Left) <= 1 &&
+                        Math.Abs(overlayPixels.Top - targetScreen.Top) <= 1 &&
+                        Math.Abs(overlayPixels.Width - targetScreen.Width) <= 1 &&
+                        Math.Abs(overlayPixels.Height - targetScreen.Height) <= 1,
+                    Visible: editor.Opacity > 0.99);
             }
             finally
             {
@@ -310,7 +332,8 @@ internal static class Program
                 pin.Close();
             }
         });
-        if (!livePinOverlay.ReceivesPointer || !livePinOverlay.Aligned || !livePinOverlay.MatchesOwnerMonitor) return 83;
+        Console.WriteLine($"PIN TOOLBAR LIVE: pointer={livePinOverlay.ReceivesPointer}, aligned={livePinOverlay.Aligned}, monitor={livePinOverlay.MatchesOwnerMonitor}, visible={livePinOverlay.Visible}");
+        if (!livePinOverlay.ReceivesPointer || !livePinOverlay.Aligned || !livePinOverlay.MatchesOwnerMonitor || !livePinOverlay.Visible) return 83;
 
         var mixedDpiOverlayBounds = PinnedAnnotationOverlayWindow.PhysicalBoundsToOverlay(
             new NativeMethods.NativeRect { Left = 1920, Top = 120, Right = 2560, Bottom = 480 },

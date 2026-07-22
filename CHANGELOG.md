@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.6] - 2026-07-22
+
+- Adopted a physical-pixel monitor topology throughout capture, pin placement, recording, OCR, and long scrolling capture
+- Declared Per-Monitor V2 DPI awareness explicitly so Windows no longer virtualizes secondary-monitor geometry
+- Normalized captured bitmaps to 96 DPI without resampling, preserving every source pixel at native pin size
+- Kept capture and pin image surfaces on nearest-neighbor, device-pixel-aligned rendering paths
+- Delayed the pinned toolbar's visible layout until its destination monitor DPI and native bounds settle
+- Added negative-coordinate monitor, physical-union, DPI-normalization, and live owner-monitor toolbar regression coverage
+
 ## [2.1.5] - 2026-07-22
 
 - Stabilized a new pin's physical bounds across several monitor-DPI layout passes instead of accepting Windows' first suggested size

@@ -33,7 +33,7 @@ public partial class CaptureOverlayWindow
         _settings.RecordingIncludeCursor = RecordingCursorBox.IsChecked ?? _settings.RecordingIncludeCursor;
         SettingsService.Save(_settings);
         var pixelRegion = SelectedPixelRegion();
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         var screenRegion = new Rect(virtualBounds.Left + pixelRegion.X, virtualBounds.Top + pixelRegion.Y, pixelRegion.Width, pixelRegion.Height);
         _recordingTargetWindow = _settings.RecordingCaptureMode.Equals("Window", StringComparison.OrdinalIgnoreCase)
             ? ElementDetectionService.WindowHandleAt(new Point(screenRegion.X + screenRegion.Width / 2, screenRegion.Y + screenRegion.Height / 2), _overlayHandle)

@@ -305,7 +305,9 @@ public partial class PinnedImageWindow : Window
             var physicalRect = default(NativeMethods.NativeRect);
             var hasPhysicalBounds = handle != IntPtr.Zero && NativeMethods.GetWindowRect(handle, out physicalRect);
             var screen = handle != IntPtr.Zero ? Forms.Screen.FromHandle(handle) : Forms.Screen.PrimaryScreen;
-            var monitorBounds = screen?.Bounds ?? System.Drawing.Rectangle.Empty;
+            var monitorBounds = handle != IntPtr.Zero
+                ? DisplayTopologyService.MonitorBoundsForWindowPixels(handle)
+                : DisplayTopologyService.VirtualBoundsPixels();
             return new PinSessionSnapshot(image, new PinSessionItem
             {
                 Left = pin.Left,
@@ -938,7 +940,7 @@ public partial class PinnedImageWindow : Window
         else
         {
             SetInitialBounds(_preThumbnailBounds);
-            PinnedImage.Stretch = Stretch.Uniform;
+            PinnedImage.Stretch = Stretch.Fill;
             _thumbnail = false;
             ShowImageSurface();
         }

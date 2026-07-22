@@ -23,7 +23,7 @@ public partial class CaptureOverlayWindow
         _longCaptureRunning = true;
         _ocrCancellation?.Cancel();
         var pixelRegion = SelectedPixelRegion();
-        var virtualBounds = Forms.SystemInformation.VirtualScreen;
+        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
         var screenRegion = new Rect(
             virtualBounds.Left + pixelRegion.X,
             virtualBounds.Top + pixelRegion.Y,

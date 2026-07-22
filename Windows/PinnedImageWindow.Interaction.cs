@@ -11,9 +11,6 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Forms = System.Windows.Forms;
-
-
 namespace SnapAnchor.Windows;
 
 public partial class PinnedImageWindow
@@ -65,7 +62,7 @@ public partial class PinnedImageWindow
     {
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero || !NativeMethods.GetWindowRect(handle, out var rect)) return;
-        var working = Forms.Screen.FromHandle(handle).WorkingArea;
+        var working = DisplayTopologyService.WorkingAreaForWindowPixels(handle);
         const int distance = 14;
         var x = rect.Left;
         var y = rect.Top;

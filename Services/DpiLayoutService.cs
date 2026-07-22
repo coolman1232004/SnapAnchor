@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using Forms = System.Windows.Forms;
 
 namespace SnapAnchor.Services;
 
@@ -26,12 +25,12 @@ internal static class DpiLayoutService
     {
         var preferredMinimumWidth = window.MinWidth;
         var preferredMinimumHeight = window.MinHeight;
-        string? currentDisplay = null;
+        System.Drawing.Rectangle? currentDisplay = null;
         void ConstrainForCurrentDisplay()
         {
             var handle = new WindowInteropHelper(window).Handle;
             if (handle == IntPtr.Zero) return;
-            currentDisplay = Forms.Screen.FromHandle(handle).DeviceName;
+            currentDisplay = DisplayTopologyService.MonitorBoundsForWindowPixels(handle);
             Constrain(window, preferredMinimumWidth, preferredMinimumHeight);
         }
         void DisplaySettingsChanged(object? sender, EventArgs args) => window.Dispatcher.BeginInvoke(ConstrainForCurrentDisplay);
@@ -46,8 +45,8 @@ internal static class DpiLayoutService
         {
             var handle = new WindowInteropHelper(window).Handle;
             if (handle == IntPtr.Zero) return;
-            var display = Forms.Screen.FromHandle(handle).DeviceName;
-            if (!string.Equals(display, currentDisplay, StringComparison.OrdinalIgnoreCase))
+            var display = DisplayTopologyService.MonitorBoundsForWindowPixels(handle);
+            if (display != currentDisplay)
                 window.Dispatcher.BeginInvoke(ConstrainForCurrentDisplay);
         };
         window.Closed += (_, _) => Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplaySettingsChanged;
@@ -57,10 +56,10 @@ internal static class DpiLayoutService
     {
         var handle = new WindowInteropHelper(window).Handle;
         if (handle == IntPtr.Zero) return;
-        var screen = Forms.Screen.FromHandle(handle);
+        var workingArea = DisplayTopologyService.WorkingAreaForWindowPixels(handle);
         var dpi = WindowScale(window);
         var available = AvailableLogicalSize(
-            new Size(screen.WorkingArea.Width, screen.WorkingArea.Height),
+            new Size(workingArea.Width, workingArea.Height),
             dpi.DpiScaleX,
             dpi.DpiScaleY);
         var availableWidth = available.Width;
@@ -84,4 +83,22 @@ internal static class DpiLayoutService
     internal static Size LogicalSizeForPhysicalPixels(int pixelWidth, int pixelHeight, double scaleX, double scaleY) => new(
         Math.Max(1, pixelWidth / Math.Max(0.1, scaleX)),
         Math.Max(1, pixelHeight / Math.Max(0.1, scaleY)));
+
+    internal static Rect PhysicalBoundsToLogical(Window window, NativeMethods.NativeRect target, NativeMethods.NativeRect origin)
+    {
+        var transform = PresentationSource.FromVisual(window)?.CompositionTarget?.TransformFromDevice;
+        if (transform is { } matrix)
+        {
+            var topLeft = matrix.Transform(new Point(target.Left - origin.Left, target.Top - origin.Top));
+            var bottomRight = matrix.Transform(new Point(target.Right - origin.Left, target.Bottom - origin.Top));
+            return new Rect(topLeft, bottomRight);
+        }
+
+        var scale = WindowScale(window);
+        return new Rect(
+            (target.Left - origin.Left) / Math.Max(0.1, scale.DpiScaleX),
+            (target.Top - origin.Top) / Math.Max(0.1, scale.DpiScaleY),
+            Math.Max(1, target.Width / Math.Max(0.1, scale.DpiScaleX)),
+            Math.Max(1, target.Height / Math.Max(0.1, scale.DpiScaleY)));
+    }
 }

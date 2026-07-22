@@ -22,6 +22,7 @@ internal static class NativeMethods
     internal const uint WdaNone = 0x00000000;
     internal const uint SwpNoZOrder = 0x0004;
     internal const uint SwpNoActivate = 0x0010;
+    internal const uint MonitorDefaultToNearest = 0x00000002;
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct NativePoint { internal int X; internal int Y; }
@@ -32,6 +33,15 @@ internal static class NativeMethods
         internal int Left; internal int Top; internal int Right; internal int Bottom;
         internal int Width => Right - Left;
         internal int Height => Bottom - Top;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    internal struct NativeMonitorInfo
+    {
+        internal int Size;
+        internal NativeRect Monitor;
+        internal NativeRect Work;
+        internal uint Flags;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -67,6 +77,7 @@ internal static class NativeMethods
     internal struct Input { internal uint Type; internal InputUnion Data; }
 
     internal delegate bool EnumWindowsCallback(IntPtr hwnd, IntPtr lParam);
+    internal delegate bool EnumDisplayMonitorsCallback(IntPtr monitor, IntPtr hdc, ref NativeRect bounds, IntPtr data);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -135,6 +146,17 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern uint GetDpiForWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool GetMonitorInfo(IntPtr monitor, ref NativeMonitorInfo info);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clipRect, EnumDisplayMonitorsCallback callback, IntPtr data);
 
     [DllImport("user32.dll")]
     internal static extern uint SendInput(uint inputCount, Input[] inputs, int inputSize);

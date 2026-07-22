@@ -17,7 +17,7 @@ public partial class WhiteboardWindow : Window
         InitializeComponent();
         _transparent = transparent;
         Title = transparent ? "SnapAnchor Transparent Whiteboard" : "SnapAnchor Whiteboard";
-        var bounds = Forms.SystemInformation.VirtualScreen;
+        var bounds = DisplayTopologyService.VirtualBoundsPixels();
         Left = SystemParameters.VirtualScreenLeft;
         Top = SystemParameters.VirtualScreenTop;
         Width = SystemParameters.VirtualScreenWidth;
@@ -49,7 +49,7 @@ public partial class WhiteboardWindow : Window
     private void FitToVirtualScreenPixels()
     {
         var handle = new WindowInteropHelper(this).Handle;
-        var bounds = Forms.SystemInformation.VirtualScreen;
+        var bounds = DisplayTopologyService.VirtualBoundsPixels();
         if (handle != IntPtr.Zero)
         {
             NativeMethods.SetWindowPos(handle, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height, NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);

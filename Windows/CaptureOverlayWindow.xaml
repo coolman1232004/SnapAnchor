@@ -20,7 +20,8 @@
         </ResourceDictionary>
     </Window.Resources>
     <Grid x:Name="Root">
-        <Image x:Name="ScreenImage" Stretch="Fill"/>
+        <Image x:Name="ScreenImage" Stretch="Fill" SnapsToDevicePixels="True" UseLayoutRounding="True"
+               RenderOptions.BitmapScalingMode="NearestNeighbor"/>
         <Rectangle x:Name="MaskLayer" Fill="#66000000"/>
         <Canvas x:Name="SelectionMask" Visibility="Collapsed" IsHitTestVisible="False">
             <Rectangle x:Name="MaskTop" Fill="#66000000"/><Rectangle x:Name="MaskLeft" Fill="#66000000"/>
