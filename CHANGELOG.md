@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.4] - 2026-07-22
+
+- Replaced the Text toolbar icon with a clean, plain upright **T** matching the supplied reference
+- Replaced the Pin toolbar icon with a rounded, tilted outline thumbtack
+- Kept both icons aligned to the shared 18 px vector canvas and compact toolbar states
+- Verified the refreshed artwork at compact size through the rendered toolbar regression preview
+
 ## [2.0.3] - 2026-07-22
 
 - Pinned-image **Show toolbar** now keeps the original pin as the only visible image

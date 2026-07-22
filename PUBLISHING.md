@@ -54,10 +54,10 @@ Do not commit the compiled ZIP or installer into Git history. GitHub blocks ordi
 
    ```powershell
    .\Tests\Run-Smoke.ps1
-   .\packaging\Build-Packages.ps1 -Version 2.0.3
+   .\packaging\Build-Packages.ps1 -Version 2.0.4
    ```
 
-2. Create a version tag such as `v2.0.3` and a matching release title.
+2. Create a version tag such as `v2.0.4` and a matching release title.
 3. Upload these files from `dist\` as release assets:
    - `SnapAnchor-Setup-win-x64.exe`
    - `SnapAnchor-Portable-win-x64.zip`

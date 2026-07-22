@@ -1,6 +1,6 @@
 param(
     [string]$DistDirectory = 'dist',
-    [string]$Version = '2.0.3',
+    [string]$Version = '2.0.4',
     [string]$CertificateThumbprint = $env:SNAPANCHOR_CERT_THUMBPRINT
 )
 
@@ -107,7 +107,7 @@ $manifest = [ordered]@{
     signed = -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)
     downloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Setup-win-x64.exe'
     portableDownloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Portable-win-x64.zip'
-    releaseNotes = 'SnapAnchor 2.0.3 keeps the original pinned image in place while showing a capture-style annotation toolbar directly beneath it, and adds an explicit Cancel action.'
+    releaseNotes = 'SnapAnchor 2.0.4 refreshes the compact Text and Pin toolbar artwork with clear, consistent WPF vector icons.'
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dist 'release.json') -Encoding UTF8
 
