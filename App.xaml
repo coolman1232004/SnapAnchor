@@ -7,15 +7,15 @@
         <ResourceDictionary.MergedDictionaries>
             <ResourceDictionary Source="Resources/ToolbarResources.xaml"/>
         </ResourceDictionary.MergedDictionaries>
-        <SolidColorBrush x:Key="PageBrush" Color="#F5F7FA" />
+        <SolidColorBrush x:Key="PageBrush" Color="#FAF9F7" />
         <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
-        <SolidColorBrush x:Key="TextBrush" Color="#111827" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#667085" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#58E0AA" />
-        <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#E4F69B" />
+        <SolidColorBrush x:Key="TextBrush" Color="#1C1917" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#57534E" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#292524" />
+        <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#E7E5E4" />
         <Style TargetType="Button">
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Foreground" Value="#111827" />
+            <Setter Property="Foreground" Value="White" />
             <Setter Property="Background" Value="{StaticResource AccentBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="18,11" />

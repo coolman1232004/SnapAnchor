@@ -209,6 +209,17 @@ public partial class HistoryWindow : Window
 
     private void Repeat_Click(object sender, RoutedEventArgs e) => RepeatLastRequested?.Invoke(this, EventArgs.Empty);
 
+    private void BackToDashboard_Click(object sender, RoutedEventArgs e)
+    {
+        if (Owner is MainWindow dashboard)
+        {
+            dashboard.Show();
+            dashboard.WindowState = WindowState.Normal;
+            dashboard.Activate();
+        }
+        Close();
+    }
+
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         System.IO.Directory.CreateDirectory(HistoryService.HistoryDirectory);

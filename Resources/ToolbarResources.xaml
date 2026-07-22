@@ -11,15 +11,15 @@
     <Thickness x:Key="ToolbarFramePadding">6,2</Thickness>
     <Thickness x:Key="ToolbarSeparatorMargin">3,5</Thickness>
 
-    <SolidColorBrush x:Key="ToolbarSurfaceBrush" Color="#FFF8FAFC"/>
-    <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#FFE2E8F0"/>
-    <SolidColorBrush x:Key="ToolbarInkBrush" Color="#FF334155"/>
-    <SolidColorBrush x:Key="ToolbarHoverBrush" Color="#FFF1F5F9"/>
-    <SolidColorBrush x:Key="ToolbarPressedBrush" Color="#FFE2E8F0"/>
-    <SolidColorBrush x:Key="ToolbarActiveBrush" Color="#FFCCFBF1"/>
-    <SolidColorBrush x:Key="ToolbarActiveInkBrush" Color="#FF0D9488"/>
-    <SolidColorBrush x:Key="ToolbarSeparatorBrush" Color="#FFCBD5E1"/>
-    <SolidColorBrush x:Key="ToolbarGripBrush" Color="#FFCBD5E1"/>
+    <SolidColorBrush x:Key="ToolbarSurfaceBrush" Color="#FFFAF9F7"/>
+    <SolidColorBrush x:Key="ToolbarBorderBrush" Color="#FFE7E5E4"/>
+    <SolidColorBrush x:Key="ToolbarInkBrush" Color="#FF1C1917"/>
+    <SolidColorBrush x:Key="ToolbarHoverBrush" Color="#FFE7E5E4"/>
+    <SolidColorBrush x:Key="ToolbarPressedBrush" Color="#FFD6D3D1"/>
+    <SolidColorBrush x:Key="ToolbarActiveBrush" Color="#FFD6D3D1"/>
+    <SolidColorBrush x:Key="ToolbarActiveInkBrush" Color="#FF1C1917"/>
+    <SolidColorBrush x:Key="ToolbarSeparatorBrush" Color="#FFD6D3D1"/>
+    <SolidColorBrush x:Key="ToolbarGripBrush" Color="#FFA8A29E"/>
 
     <!-- Drawing tools. All geometries share a 24 x 24 optical canvas. -->
     <Geometry x:Key="ToolbarRectangleIcon">M4,5 H20 V19 H4 Z M6.5,16.5 H9.5 V19.5 H6.5 Z</Geometry>

@@ -99,7 +99,7 @@
                     <TextBlock x:Name="RecordingTimerText" Text="00:00" Foreground="White" FontSize="15" FontWeight="SemiBold" MinWidth="62" VerticalAlignment="Center"/>
                     <TextBlock x:Name="RecordingFrameText" Text="0 frames" Foreground="#AAB2C0" FontSize="12" Margin="6,0,12,0" VerticalAlignment="Center"/>
                     <CheckBox x:Name="RecordingCursorBox" Content="Cursor" Foreground="White" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <Button x:Name="RecordingPauseButton" ToolTip="Pause recording (Space)" Width="82" Height="34" Margin="2" Background="#344054" BorderBrush="#667085" Click="RecordingPause_Click">
+                    <Button x:Name="RecordingPauseButton" ToolTip="Pause recording (Space)" Width="82" Height="34" Margin="2" Background="#292524" BorderBrush="#57534E" Click="RecordingPause_Click">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <Grid Width="18" Height="18" Margin="0,0,6,0">
                                 <Grid x:Name="RecordingPauseIcon"><Path Data="M2,1 H7 V17 H2 Z M11,1 H16 V17 H11 Z" Fill="White" Stretch="Fill"/></Grid>
@@ -125,22 +125,22 @@
                 <Border.Effect><DropShadowEffect Color="#66000000" BlurRadius="22" ShadowDepth="5"/></Border.Effect>
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <DockPanel x:Name="RecordingReviewHeader" Margin="0,0,0,12" Cursor="SizeAll" MouseLeftButtonDown="RecordingReviewHeader_MouseLeftButtonDown" MouseMove="RecordingReviewHeader_MouseMove" MouseLeftButtonUp="RecordingReviewHeader_MouseLeftButtonUp"><TextBlock Text="Review and trim recording" FontSize="20" FontWeight="SemiBold" Foreground="#101828"/><TextBlock x:Name="TrimDurationText" DockPanel.Dock="Right" Foreground="#667085" VerticalAlignment="Center"/></DockPanel>
+                    <DockPanel x:Name="RecordingReviewHeader" Margin="0,0,0,12" Cursor="SizeAll" MouseLeftButtonDown="RecordingReviewHeader_MouseLeftButtonDown" MouseMove="RecordingReviewHeader_MouseMove" MouseLeftButtonUp="RecordingReviewHeader_MouseLeftButtonUp"><TextBlock Text="Review and trim recording" FontSize="20" FontWeight="SemiBold" Foreground="#1C1917"/><TextBlock x:Name="TrimDurationText" DockPanel.Dock="Right" Foreground="#57534E" VerticalAlignment="Center"/></DockPanel>
                     <Border Grid.Row="1" Background="#101216" CornerRadius="8" ClipToBounds="True">
                         <MediaElement x:Name="RecordingPreviewMedia" LoadedBehavior="Manual" UnloadedBehavior="Stop" Stretch="Uniform" MediaEnded="RecordingPreviewMedia_MediaEnded"/>
                     </Border>
                     <Grid Grid.Row="2" Margin="0,12,0,8">
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="80"/><ColumnDefinition Width="*"/><ColumnDefinition Width="62"/></Grid.ColumnDefinitions>
-                        <TextBlock Text="Start" Foreground="#344054" VerticalAlignment="Center"/><Slider x:Name="TrimStartSlider" Grid.Column="1" Minimum="0" ValueChanged="TrimSlider_Changed"/><TextBlock x:Name="TrimStartText" Grid.Column="2" Foreground="#667085" HorizontalAlignment="Right"/>
-                        <TextBlock Grid.Row="1" Text="End" Foreground="#344054" VerticalAlignment="Center"/><Slider x:Name="TrimEndSlider" Grid.Row="1" Grid.Column="1" Minimum="0" ValueChanged="TrimSlider_Changed"/><TextBlock x:Name="TrimEndText" Grid.Row="1" Grid.Column="2" Foreground="#667085" HorizontalAlignment="Right"/>
+                        <TextBlock Text="Start" Foreground="#57534E" VerticalAlignment="Center"/><Slider x:Name="TrimStartSlider" Grid.Column="1" Minimum="0" ValueChanged="TrimSlider_Changed"/><TextBlock x:Name="TrimStartText" Grid.Column="2" Foreground="#57534E" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Row="1" Text="End" Foreground="#57534E" VerticalAlignment="Center"/><Slider x:Name="TrimEndSlider" Grid.Row="1" Grid.Column="1" Minimum="0" ValueChanged="TrimSlider_Changed"/><TextBlock x:Name="TrimEndText" Grid.Row="1" Grid.Column="2" Foreground="#57534E" HorizontalAlignment="Right"/>
                     </Grid>
-                    <TextBlock x:Name="RecordingSavePathText" Grid.Row="3" Foreground="#667085" FontSize="12" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="RecordingSavePathText" Grid.Row="3" Foreground="#57534E" FontSize="12" Margin="0,0,0,9" TextTrimming="CharacterEllipsis"/>
                     <DockPanel Grid.Row="4">
                         <Button Content="Keep full" DockPanel.Dock="Right" Width="96" Height="38" Margin="8,0,0,0" Background="#D0D5DD" Click="KeepFullRecording_Click"/>
-                        <Button Content="Save trimmed" DockPanel.Dock="Right" Width="112" Height="38" Margin="8,0,0,0" Background="#2C978E" Foreground="White" Click="SaveTrimmedRecording_Click"/>
+                        <Button Content="Save trimmed" DockPanel.Dock="Right" Width="112" Height="38" Margin="8,0,0,0" Background="#292524" Foreground="White" Click="SaveTrimmedRecording_Click"/>
                         <Button x:Name="DiscardRecordingButton" Content="Discard" DockPanel.Dock="Right" Width="82" Height="38" Margin="8,0,0,0" Background="#FEE2E2" Foreground="#B42318" BorderBrush="#FDA29B" Click="DiscardRecording_Click"/>
-                        <Button x:Name="RecordingPreviewPlayButton" Width="88" Height="38" HorizontalAlignment="Left" Background="#2C978E" BorderBrush="#2C978E" ToolTip="Play or pause preview (Space)" Click="RecordingPreviewPlay_Click">
+                        <Button x:Name="RecordingPreviewPlayButton" Width="88" Height="38" HorizontalAlignment="Left" Background="#292524" BorderBrush="#292524" ToolTip="Play or pause preview (Space)" Click="RecordingPreviewPlay_Click">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <Grid Width="18" Height="18" Margin="0,0,7,0">
                                     <Path x:Name="ReviewPlayIcon" Data="M3,1 L16,9 L3,17 Z" Fill="White" Stretch="Fill"/>
@@ -171,7 +171,7 @@
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <DockPanel Margin="0,0,0,14">
-                        <Button DockPanel.Dock="Right" Width="32" Height="32" Background="Transparent" BorderThickness="0" ToolTip="Close" Click="CloseOcr_Click"><Path Data="M5,5 L19,19 M19,5 L5,19" Stroke="#667085" StrokeThickness="2" Stretch="Uniform" Margin="7"/></Button>
+                        <Button DockPanel.Dock="Right" Width="32" Height="32" Background="Transparent" BorderThickness="0" ToolTip="Close" Click="CloseOcr_Click"><Path Data="M5,5 L19,19 M19,5 L5,19" Stroke="#57534E" StrokeThickness="2" Stretch="Uniform" Margin="7"/></Button>
                         <StackPanel Orientation="Horizontal"><Border Width="28" Height="28" CornerRadius="6" Background="#E8F1FF" Margin="0,0,10,0"><TextBlock Text="A" Foreground="#3388FF" FontWeight="Bold" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Recognize text" Foreground="#101828" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel>
                     </DockPanel>
                     <TextBox x:Name="CaptureOcrResultBox" Grid.Row="1" Background="#F6F7F9" Foreground="#101828" BorderThickness="0" Padding="16,13" FontSize="16" FontFamily="Segoe UI" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto"/>
@@ -187,7 +187,7 @@
                         <StackPanel Orientation="Horizontal">
                             <Button Content="Select area" Width="92" Height="36" Margin="0,0,7,0" Background="#FEC84B" Click="SelectOcrArea_Click"/>
                             <Button x:Name="RetryOcrButton" Content="Retry" Width="68" Height="36" Margin="0,0,10,0" Background="#D0D5DD" Click="RetryOcr_Click"/>
-                            <CheckBox x:Name="OcrAutoCopyBox" Content="Auto-copy" Foreground="#667085" VerticalAlignment="Center" Checked="OcrAutoCopy_Changed" Unchecked="OcrAutoCopy_Changed"/>
+                            <CheckBox x:Name="OcrAutoCopyBox" Content="Auto-copy" Foreground="#57534E" VerticalAlignment="Center" Checked="OcrAutoCopy_Changed" Unchecked="OcrAutoCopy_Changed"/>
                         </StackPanel>
                     </DockPanel>
                 </Grid>

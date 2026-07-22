@@ -3,13 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SnapAnchor History" Icon="pack://application:,,,/SnapAnchor;component/Assets/SnapAnchor-icon-512.png"
         Width="1120" Height="760" MinWidth="840" MinHeight="540"
-        WindowStartupLocation="CenterOwner" Background="#EBF2F5" Foreground="#11181D"
+        WindowStartupLocation="CenterOwner" Background="#FAF9F7" Foreground="#1C1917"
         FontFamily="Segoe UI" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <Window.Resources>
         <Style x:Key="HeaderActionButton" TargetType="Button">
             <Setter Property="Height" Value="58"/>
             <Setter Property="Padding" Value="18,0"/>
-            <Setter Property="Foreground" Value="#11181D"/>
+            <Setter Property="Foreground" Value="#1C1917"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -33,9 +33,9 @@
         <Style x:Key="PillButton" TargetType="Button">
             <Setter Property="Height" Value="25"/>
             <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="Background" Value="#DCE4E8"/>
-            <Setter Property="Foreground" Value="#11181D"/>
-            <Setter Property="BorderBrush" Value="#B8C5CB"/>
+            <Setter Property="Background" Value="#E7E5E4"/>
+            <Setter Property="Foreground" Value="#1C1917"/>
+            <Setter Property="BorderBrush" Value="#D6D3D1"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -47,7 +47,7 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PillBorder" Property="Background" Value="#CBD8DD"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="PillBorder" Property="Background" Value="#D6D3D1"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -57,7 +57,7 @@
         <Style x:Key="CardActionButton" TargetType="Button">
             <Setter Property="Height" Value="38"/>
             <Setter Property="Margin" Value="3"/>
-            <Setter Property="Foreground" Value="#11181D"/>
+            <Setter Property="Foreground" Value="#1C1917"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -88,22 +88,24 @@
         <Grid Margin="0,0,0,16">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Capture history" FontSize="30" FontWeight="SemiBold" Foreground="#11181D"/>
-                <TextBlock x:Name="SummaryText" Foreground="#5F6B73" FontSize="13" Margin="1,5,0,0"/>
+                <Button x:Name="BackToDashboardButton" Content="Back to SnapAnchor" Click="BackToDashboard_Click" Height="32" HorizontalAlignment="Left"
+                        Padding="11,0" Margin="0,0,0,9" Background="#E7E5E4" Style="{StaticResource PillButton}"/>
+                <TextBlock Text="Capture history" FontSize="30" FontWeight="SemiBold" Foreground="#1C1917"/>
+                <TextBlock x:Name="SummaryText" Foreground="#57534E" FontSize="13" Margin="1,5,0,0"/>
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Repeat last region" Click="Repeat_Click" Width="166" Margin="0,0,10,0"
-                        Background="#2C978E" Foreground="White" Style="{StaticResource HeaderActionButton}"/>
+                        Background="#292524" Foreground="White" Style="{StaticResource HeaderActionButton}"/>
                 <Button Content="Open folder" Click="OpenFolder_Click" Width="126" Margin="0,0,10,0"
-                        Background="#C5E6F7" Style="{StaticResource HeaderActionButton}"/>
+                        Background="#E7E5E4" Style="{StaticResource HeaderActionButton}"/>
                 <Button Content="Clear history" Click="Clear_Click" Width="132"
-                        Background="#EF7474" Foreground="White" Style="{StaticResource HeaderActionButton}"/>
+                        Background="#78716C" Foreground="White" Style="{StaticResource HeaderActionButton}"/>
             </StackPanel>
         </Grid>
 
-        <Border x:Name="FilterPanel" Grid.Row="1" Background="#FEFEFE" CornerRadius="12" Padding="12"
-                BorderBrush="#D5E0E5" BorderThickness="1" Margin="0,0,0,14">
-            <Border.Effect><DropShadowEffect Color="#50616A" BlurRadius="10" ShadowDepth="2" Opacity="0.08"/></Border.Effect>
+        <Border x:Name="FilterPanel" Grid.Row="1" Background="#FFFFFF" CornerRadius="12" Padding="12"
+                BorderBrush="#E7E5E4" BorderThickness="1" Margin="0,0,0,14">
+            <Border.Effect><DropShadowEffect Color="#1C1917" BlurRadius="10" ShadowDepth="2" Opacity="0.07"/></Border.Effect>
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
@@ -113,33 +115,33 @@
                     <ColumnDefinition Width="150"/>
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="SearchBox" Height="38" Padding="10,7" Margin="0,0,10,0"
-                         BorderBrush="#B9C6CC" BorderThickness="1" Background="White" Foreground="#11181D"
+                         BorderBrush="#D6D3D1" BorderThickness="1" Background="White" Foreground="#1C1917"
                          TextChanged="SearchBox_TextChanged" ToolTip="Search OCR text, barcode content, source, dimensions, or date"/>
                 <ComboBox x:Name="SourceFilterBox" Grid.Column="1" Height="38" Margin="0,0,10,0" Padding="7,5"
-                          Background="White" Foreground="#11181D" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
+                          Background="White" Foreground="#1C1917" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
                     <ComboBoxItem Content="All sources" Tag="All" IsSelected="True"/><ComboBoxItem Content="Capture" Tag="Capture"/>
                     <ComboBoxItem Content="Copied" Tag="Copied"/><ComboBoxItem Content="Saved" Tag="Saved"/><ComboBoxItem Content="Pinned" Tag="Pinned"/>
                     <ComboBoxItem Content="Window" Tag="Window"/><ComboBoxItem Content="Scrolling" Tag="Scrolling"/><ComboBoxItem Content="OCR" Tag="OCR"/>
                     <ComboBoxItem Content="Recording" Tag="Recording"/><ComboBoxItem Content="Edited" Tag="Edited"/>
                 </ComboBox>
                 <ComboBox x:Name="TypeFilterBox" Grid.Column="2" Height="38" Margin="0,0,10,0" Padding="7,5"
-                          Background="White" Foreground="#11181D" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
+                          Background="White" Foreground="#1C1917" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
                     <ComboBoxItem Content="All types" Tag="All" IsSelected="True"/><ComboBoxItem Content="Images" Tag="Images"/>
                     <ComboBoxItem Content="Recordings" Tag="Recordings"/><ComboBoxItem Content="OCR results" Tag="OCR"/>
                     <ComboBoxItem Content="Annotated" Tag="Annotated"/><ComboBoxItem Content="With context" Tag="Context"/>
                 </ComboBox>
                 <ComboBox x:Name="DateFilterBox" Grid.Column="3" Height="38" Padding="7,5"
-                          Background="White" Foreground="#11181D" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
+                          Background="White" Foreground="#1C1917" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
                     <ComboBoxItem Content="Any date" Tag="All" IsSelected="True"/><ComboBoxItem Content="Today" Tag="Today"/>
                     <ComboBoxItem Content="Last 7 days" Tag="7"/><ComboBoxItem Content="Last 30 days" Tag="30"/>
                 </ComboBox>
                 <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="4,11,0,0">
-                    <CheckBox x:Name="FavoriteOnlyBox" Content="Favourites only" Foreground="#11181D" VerticalAlignment="Center"
+                    <CheckBox x:Name="FavoriteOnlyBox" Content="Favourites only" Foreground="#1C1917" VerticalAlignment="Center"
                               Margin="0,0,24,0" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
-                    <CheckBox x:Name="ShowRecycleBox" Content="Show recycle bin" Foreground="#11181D" VerticalAlignment="Center"
+                    <CheckBox x:Name="ShowRecycleBox" Content="Show recycle bin" Foreground="#1C1917" VerticalAlignment="Center"
                               Checked="Filter_Changed" Unchecked="Filter_Changed"/>
                     <Button Content="Empty recycle bin" Click="EmptyRecycle_Click" Height="30" Padding="14,0" Margin="22,-3,0,-3"
-                            Background="#8DD9D0" Style="{StaticResource PillButton}" FontSize="12" BorderThickness="0"/>
+                            Background="#D6D3D1" Style="{StaticResource PillButton}" FontSize="12" BorderThickness="0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -167,23 +169,23 @@
             </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Border Width="318" MinHeight="360" Background="#FEFEFE" CornerRadius="12" Padding="14"
-                            BorderBrush="#C7D3D9" BorderThickness="1">
-                        <Border.Effect><DropShadowEffect Color="#50616A" BlurRadius="12" ShadowDepth="2" Opacity="0.10"/></Border.Effect>
+                    <Border Width="318" MinHeight="360" Background="#FFFFFF" CornerRadius="12" Padding="14"
+                            BorderBrush="#E7E5E4" BorderThickness="1">
+                        <Border.Effect><DropShadowEffect Color="#1C1917" BlurRadius="12" ShadowDepth="2" Opacity="0.09"/></Border.Effect>
                         <StackPanel>
-                            <Border Height="174" Background="#F2F5F6" CornerRadius="7" ClipToBounds="True">
+                            <Border Height="174" Background="#F5F2ED" CornerRadius="7" ClipToBounds="True">
                                 <Image Source="{Binding Thumbnail}" Stretch="Uniform" MouseLeftButtonDown="Thumbnail_MouseLeftButtonDown" Tag="{Binding Id}"/>
                             </Border>
 
                             <Grid Margin="2,10,2,6">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding SizeLabel}" Foreground="#11181D" FontSize="12"/>
-                                <TextBlock Grid.Column="1" Text="{Binding TimeLabel}" Foreground="#11181D" FontSize="12" HorizontalAlignment="Right"/>
+                                <TextBlock Text="{Binding SizeLabel}" Foreground="#57534E" FontSize="12"/>
+                                <TextBlock Grid.Column="1" Text="{Binding TimeLabel}" Foreground="#57534E" FontSize="12" HorizontalAlignment="Right"/>
                             </Grid>
 
                             <Grid Margin="2,0,2,4">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding Title}" Foreground="#11181D" FontWeight="SemiBold" FontSize="13"
+                                <TextBlock Text="{Binding Title}" Foreground="#1C1917" FontWeight="SemiBold" FontSize="13"
                                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 <Button Grid.Column="1" Content="Name / tags" Click="Rename_Click" Tag="{Binding Id}"
                                         Margin="8,0,0,0" Visibility="{Binding ActiveVisibility}" Style="{StaticResource PillButton}"/>
@@ -191,27 +193,27 @@
 
                             <Grid Margin="2,0,2,4">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding SourceLabel}" Foreground="#27A883" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SourceLabel}" Foreground="#57534E" FontSize="12" VerticalAlignment="Center"/>
                                 <Button Grid.Column="1" Content="{Binding ContextLabel}" Visibility="{Binding ContextVisibility}"
                                         Click="ToggleContext_Click" Tag="{Binding Id}" Margin="8,0,0,0" Style="{StaticResource PillButton}"/>
                             </Grid>
 
-                            <TextBlock Text="{Binding RecognitionLabel}" Foreground="#27A883" FontSize="11" Height="18"
+                            <TextBlock Text="{Binding RecognitionLabel}" Foreground="#57534E" FontSize="11" Height="18"
                                        Margin="2,0,2,5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
 
                             <UniformGrid Columns="6" Visibility="{Binding ActiveVisibility}">
-                                <Button Content="Copy" Click="Copy_Click" Tag="{Binding Id}" Background="#8EDFD0" Style="{StaticResource CardActionButton}"/>
-                                <Button Content="Pin" Click="Pin_Click" Tag="{Binding Id}" Background="#CFF39A" Style="{StaticResource CardActionButton}"/>
-                                <Button Content="{Binding EditLabel}" Click="Edit_Click" Tag="{Binding Id}" Background="#CDB9F7" Style="{StaticResource CardActionButton}"/>
+                                <Button Content="Copy" Click="Copy_Click" Tag="{Binding Id}" Background="#292524" Foreground="White" Style="{StaticResource CardActionButton}"/>
+                                <Button Content="Pin" Click="Pin_Click" Tag="{Binding Id}" Background="#292524" Foreground="White" Style="{StaticResource CardActionButton}"/>
+                                <Button Content="{Binding EditLabel}" Click="Edit_Click" Tag="{Binding Id}" Background="#292524" Foreground="White" Style="{StaticResource CardActionButton}"/>
                                 <Button Content="#" ToolTip="Recognize text and QR/barcodes" Click="Recognize_Click" Tag="{Binding Id}"
-                                        Background="#F8CE68" FontSize="15" Style="{StaticResource CardActionButton}"/>
+                                        Background="#D6D3D1" FontSize="15" Style="{StaticResource CardActionButton}"/>
                                 <Button Content="{Binding FavoriteGlyph}" ToolTip="Add or remove favourite" Click="Favorite_Click" Tag="{Binding Id}"
-                                        Background="#FFE69A" FontSize="14" Style="{StaticResource CardActionButton}"/>
-                                <Button Content="Delete" Click="Delete_Click" Tag="{Binding Id}" Background="#F78A82" Style="{StaticResource CardActionButton}"/>
+                                        Background="#D6D3D1" FontSize="14" Style="{StaticResource CardActionButton}"/>
+                                <Button Content="Delete" Click="Delete_Click" Tag="{Binding Id}" Background="#78716C" Foreground="White" Style="{StaticResource CardActionButton}"/>
                             </UniformGrid>
                             <UniformGrid Columns="2" Visibility="{Binding DeletedVisibility}">
-                                <Button Content="Restore" Click="Restore_Click" Tag="{Binding Id}" Background="#CFF39A" Style="{StaticResource CardActionButton}"/>
-                                <Button Content="Delete forever" Click="DeleteForever_Click" Tag="{Binding Id}" Background="#F78A82" Style="{StaticResource CardActionButton}"/>
+                                <Button Content="Restore" Click="Restore_Click" Tag="{Binding Id}" Background="#292524" Foreground="White" Style="{StaticResource CardActionButton}"/>
+                                <Button Content="Delete forever" Click="DeleteForever_Click" Tag="{Binding Id}" Background="#78716C" Foreground="White" Style="{StaticResource CardActionButton}"/>
                             </UniformGrid>
                         </StackPanel>
                     </Border>

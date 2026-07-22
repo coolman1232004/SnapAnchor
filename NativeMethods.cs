@@ -17,6 +17,7 @@ internal static class NativeMethods
     internal const uint InputMouse = 0;
     internal const uint MouseEventWheel = 0x0800;
     internal const uint GaRoot = 2;
+    internal const uint WmMouseWheel = 0x020A;
     internal const uint WdaExcludeFromCapture = 0x00000011;
     internal const uint WdaNone = 0x00000000;
     internal const uint SwpNoZOrder = 0x0004;
@@ -134,6 +135,10 @@ internal static class NativeMethods
 
     [DllImport("user32.dll")]
     internal static extern uint SendInput(uint inputCount, Input[] inputs, int inputSize);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
     internal static extern short GetAsyncKeyState(int virtualKey);

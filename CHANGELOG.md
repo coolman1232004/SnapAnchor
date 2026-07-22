@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.0] - 2026-07-22
+
+- Long scrolling capture now sends wheel input to the selected underlying window, with a system-input fallback for controls that ignore posted messages
+- Long capture now reports when the selected content did not scroll instead of silently returning the original viewport
+- Redesigned the dashboard, History, Preferences, capture controls, and pinned-image surfaces with a warm neutral and charcoal palette
+- Replaced the application icon with a flat charcoal capture-frame and anchor design that remains legible at taskbar and tray sizes
+- Added a direct **Back to SnapAnchor** action in Capture History
+- Added localized English, Simplified Chinese, and Traditional Chinese strings plus regression coverage for the new behavior and layout
+
 ## [2.0.5] - 2026-07-22
 
 - Pinned-image editing now opens with no annotation tool selected, so the pin can be dragged immediately

@@ -14,6 +14,8 @@ internal static class ScrollingCaptureService
     public static async Task<ScrollingCaptureResult> CaptureAsync(
         Rect screenRegion,
         AppSettings settings,
+        IntPtr scrollTarget = default,
+        NativeMethods.NativePoint scrollPoint = default,
         CancellationToken cancellationToken = default,
         IProgress<ScrollingCaptureProgress>? progress = null,
         Func<bool>? stopRequested = null)
@@ -26,7 +28,7 @@ internal static class ScrollingCaptureService
         var stopReason = "Maximum frame count reached";
         var maxFrames = Math.Clamp(settings.ScrollCaptureMaxFrames, 2, 60);
         var delay = Math.Clamp(settings.ScrollCaptureDelayMs, 150, 3000);
-        var wheelDelta = (uint)unchecked(-120 * Math.Clamp(settings.ScrollCaptureWheelClicks, 1, 20));
+        var wheelDelta = -120 * Math.Clamp(settings.ScrollCaptureWheelClicks, 1, 20);
 
         progress?.Report(new ScrollingCaptureProgress(1, 0, LocalizationService.Current("Captured first frame")));
         for (var attempt = 1; frames.Count < maxFrames && attempt < maxFrames * 2; attempt++)
@@ -38,7 +40,7 @@ internal static class ScrollingCaptureService
                 stopReason = "Stopped by user";
                 break;
             }
-            Scroll(wheelDelta);
+            Scroll(scrollTarget, scrollPoint, wheelDelta, consecutiveDuplicates > 0);
             await Task.Delay(delay, CancellationToken.None);
             var current = CaptureService.CaptureScreenRect(screenRegion);
             var previousPixels = PixelFrame.From(frames[^1]);
@@ -184,14 +186,21 @@ internal static class ScrollingCaptureService
         return total;
     }
 
-    private static void Scroll(uint wheelDelta)
+    private static void Scroll(IntPtr target, NativeMethods.NativePoint point, int wheelDelta, bool useSystemInput)
     {
+        if (target != IntPtr.Zero && !useSystemInput)
+        {
+            var wheelParameter = new IntPtr(unchecked(wheelDelta << 16));
+            var pointParameter = new IntPtr(unchecked((point.Y << 16) | (point.X & 0xFFFF)));
+            if (NativeMethods.PostMessage(target, NativeMethods.WmMouseWheel, wheelParameter, pointParameter)) return;
+        }
+
         var inputs = new[]
         {
             new NativeMethods.Input
             {
                 Type = NativeMethods.InputMouse,
-                Data = new NativeMethods.InputUnion { Mouse = new NativeMethods.MouseInput { MouseData = wheelDelta, Flags = NativeMethods.MouseEventWheel } }
+                Data = new NativeMethods.InputUnion { Mouse = new NativeMethods.MouseInput { MouseData = unchecked((uint)wheelDelta), Flags = NativeMethods.MouseEventWheel } }
             }
         };
         NativeMethods.SendInput(1, inputs, System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.Input>());

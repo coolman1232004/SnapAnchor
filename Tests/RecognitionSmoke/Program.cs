@@ -258,18 +258,18 @@ internal static class Program
             var hasGitHubUpdateCommand = tray?.ContextMenuStrip?.Items
                 .OfType<System.Windows.Forms.ToolStripItem>()
                 .Any(item => item.Text == "Check for updates…") == true;
-            var matches = IsColor(window.Background, 0xEB, 0xF2, 0xF5) &&
-                IsColor(capture.Background, 0x2C, 0x97, 0x8E) &&
-                IsColor(pin.Background, 0xC5, 0xE6, 0xF7) &&
-                IsColor(card.Background, 0xFE, 0xFE, 0xFE) &&
-                IsColor(shortcutPanel.BorderBrush, 0xBE, 0xD7, 0xE3) &&
+            var matches = IsColor(window.Background, 0xFA, 0xF9, 0xF7) &&
+                IsColor(capture.Background, 0x29, 0x25, 0x24) &&
+                IsColor(pin.Background, 0xE7, 0xE5, 0xE4) &&
+                IsColor(card.Background, 0xFF, 0xFF, 0xFF) &&
+                IsColor(shortcutPanel.BorderBrush, 0xE7, 0xE5, 0xE4) &&
                 taskbarIcon is { PixelWidth: >= 32, PixelHeight: >= 32 } &&
                 hasGitHubUpdateCommand;
             window.DisposeLayoutPreview();
             return matches;
         });
         if (!dashboardPaletteMatches) return 50;
-        Console.WriteLine("DASHBOARD PALETTE: teal, sky blue, cool background and card colours verified");
+        Console.WriteLine("DASHBOARD PALETTE: warm neutral background, charcoal actions and white cards verified");
 
         var aboutEdition = RunSta(() =>
         {
@@ -496,8 +496,9 @@ internal static class Program
             {
                 var window = new HistoryWindow();
                 if (window.Width != 1120 || window.Height != 760 ||
-                    window.Background is not SolidColorBrush { Color: var background } || background != Color.FromRgb(235, 242, 245) ||
-                    window.FindName("FilterPanel") is not Border { CornerRadius: var radius } || radius.TopLeft != 12)
+                    window.Background is not SolidColorBrush { Color: var background } || background != Color.FromRgb(250, 249, 247) ||
+                    window.FindName("FilterPanel") is not Border { CornerRadius: var radius } || radius.TopLeft != 12 ||
+                    window.FindName("BackToDashboardButton") is not Button)
                     throw new InvalidOperationException("History window does not use the redesigned light layout.");
                 var itemType = typeof(HistoryWindow).GetNestedType("HistoryViewItem", System.Reflection.BindingFlags.NonPublic)
                     ?? throw new InvalidOperationException("History preview item type is missing.");
@@ -529,7 +530,7 @@ internal static class Program
                 {
                     Width = 1120,
                     Height = 760,
-                    Background = new SolidColorBrush(Color.FromRgb(235, 242, 245)),
+                    Background = new SolidColorBrush(Color.FromRgb(250, 249, 247)),
                     Child = content
                 };
                 host.Measure(new Size(1120, 760));

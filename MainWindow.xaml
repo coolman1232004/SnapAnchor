@@ -3,18 +3,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SnapAnchor" Icon="pack://application:,,,/SnapAnchor;component/Assets/SnapAnchor-icon-512.png"
         Height="700" Width="920" MinHeight="600" MinWidth="760"
-        Background="#EBF2F5" Foreground="#11181D"
+        Background="#FAF9F7" Foreground="#1C1917"
         FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <SolidColorBrush x:Key="PageBrush" Color="#EBF2F5"/>
-        <SolidColorBrush x:Key="PanelBrush" Color="#FEFEFE"/>
-        <SolidColorBrush x:Key="TextBrush" Color="#11181D"/>
-        <SolidColorBrush x:Key="MutedBrush" Color="#52636C"/>
-        <SolidColorBrush x:Key="AccentBrush" Color="#2C978E"/>
-        <SolidColorBrush x:Key="LogoAccentBrush" Color="#41BBAC"/>
-        <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#C5E6F7"/>
-        <SolidColorBrush x:Key="NeutralBrush" Color="#D1D9DC"/>
-        <SolidColorBrush x:Key="BottomBarBrush" Color="#BED7E3"/>
+        <SolidColorBrush x:Key="PageBrush" Color="#FAF9F7"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#1C1917"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#57534E"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#292524"/>
+        <SolidColorBrush x:Key="LogoAccentBrush" Color="#292524"/>
+        <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#E7E5E4"/>
+        <SolidColorBrush x:Key="NeutralBrush" Color="#E7E5E4"/>
+        <SolidColorBrush x:Key="BottomBarBrush" Color="#E7E5E4"/>
         <Style TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/><Setter Property="Foreground" Value="White"/><Setter Property="Background" Value="{StaticResource AccentBrush}"/>
             <Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="18,11"/><Setter Property="FontWeight" Value="SemiBold"/>
@@ -30,7 +30,7 @@
             <Setter Property="CornerRadius" Value="14"/>
             <Setter Property="Padding" Value="22"/>
             <Setter Property="Effect">
-                <Setter.Value><DropShadowEffect Color="#260F2933" BlurRadius="15" ShadowDepth="3" Opacity="0.34"/></Setter.Value>
+                <Setter.Value><DropShadowEffect Color="#1C1917" BlurRadius="15" ShadowDepth="3" Opacity="0.12"/></Setter.Value>
             </Setter>
         </Style>
         <Style TargetType="TabItem">
@@ -41,7 +41,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}" CornerRadius="8,8,0,0" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="0,0,0,2" CornerRadius="8,8,0,0" Padding="{TemplateBinding Padding}">
                             <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -49,8 +49,9 @@
                                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                                 <Setter TargetName="TabSurface" Property="Background" Value="{StaticResource PanelBrush}"/>
+                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                             </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="#DCECF3"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="#E7E5E4"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -133,7 +134,7 @@
                             <DockPanel Grid.Row="1" Margin="0,8,0,0" LastChildFill="False">
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                     <Button Content="Hide / show" Click="ToggleManagedPins_Click" Padding="11,6" Margin="7,0,0,0"/>
-                                    <Button Content="Close group" Click="CloseManagedPins_Click" Padding="11,6" Margin="7,0,0,0" Background="#FECACA"/>
+                                    <Button Content="Close group" Click="CloseManagedPins_Click" Padding="11,6" Margin="7,0,0,0" Background="#78716C"/>
                                 </StackPanel>
                                 <TextBlock x:Name="PinDesktopStatus" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
                                 <Button Content="Link desktop" Click="BindPinGroupDesktop_Click" Padding="11,6" Margin="9,0,0,0"/>
@@ -144,7 +145,7 @@
                             <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Width="145" Height="120" Background="#F7FAFB" BorderBrush="{StaticResource NeutralBrush}" BorderThickness="1" CornerRadius="9" Margin="0,0,9,9" Padding="7">
+                                    <Border Width="145" Height="120" Background="#FAF9F7" BorderBrush="{StaticResource NeutralBrush}" BorderThickness="1" CornerRadius="9" Margin="0,0,9,9" Padding="7">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="72"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                             <Image Source="{Binding Image}" Stretch="Uniform"/>
@@ -152,7 +153,7 @@
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding SizeLabel}" FontSize="11" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="{Binding VisibilityLabel}" FontSize="10" Foreground="{StaticResource MutedBrush}"/></StackPanel>
                                                 <Button Grid.Column="1" Content="↗" Tag="{Binding Id}" Click="ActivateManagedPin_Click" Width="28" Height="28" Padding="0" Margin="3,0" ToolTip="Show this pin"/>
-                                                <Button Grid.Column="2" Content="×" Tag="{Binding Id}" Click="CloseManagedPin_Click" Width="28" Height="28" Padding="0" Background="#FECACA" ToolTip="Close this pin"/>
+                                                <Button Grid.Column="2" Content="×" Tag="{Binding Id}" Click="CloseManagedPin_Click" Width="28" Height="28" Padding="0" Background="#78716C" ToolTip="Close this pin"/>
                                             </Grid>
                                         </Grid>
                                     </Border>
@@ -164,7 +165,7 @@
             </TabItem>
         </TabControl>
 
-        <Border x:Name="ShortcutPanel" Grid.Row="3" Background="#E7F0F4" BorderBrush="{StaticResource BottomBarBrush}" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,18,0,0">
+        <Border x:Name="ShortcutPanel" Grid.Row="3" Background="#F5F2ED" BorderBrush="{StaticResource BottomBarBrush}" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,18,0,0">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">

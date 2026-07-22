@@ -39,17 +39,17 @@
                 <TextBlock Text="click-through" Foreground="White" FontSize="11" />
             </Border>
             <Border x:Name="PinStateBadge" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,27,0,0"
-                    Background="#DDEBF2F5" BorderBrush="#552C978E" BorderThickness="1" CornerRadius="5,0,0,5" Padding="7,3" Panel.ZIndex="60" IsHitTestVisible="False">
-                <TextBlock x:Name="PinStateText" Foreground="#153A3A" FontSize="10.5" FontWeight="SemiBold"/>
+                    Background="#DDF5F2ED" BorderBrush="#5578716C" BorderThickness="1" CornerRadius="5,0,0,5" Padding="7,3" Panel.ZIndex="60" IsHitTestVisible="False">
+                <TextBlock x:Name="PinStateText" Foreground="#1C1917" FontSize="10.5" FontWeight="SemiBold"/>
             </Border>
-            <Border x:Name="ShadeHeader" Visibility="Collapsed" Background="#F5EBF2F5" BorderBrush="#552C978E" BorderThickness="0,0,0,1" Panel.ZIndex="80">
+            <Border x:Name="ShadeHeader" Visibility="Collapsed" Background="#F5FAF9F7" BorderBrush="#5578716C" BorderThickness="0,0,0,1" Panel.ZIndex="80">
                 <DockPanel Margin="8,0">
-                    <TextBlock Text="SnapAnchor" Foreground="#2C978E" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="ShadeTitleText" Text="Pinned image" Foreground="#11181D" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="SnapAnchor" Foreground="#292524" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="ShadeTitleText" Text="Pinned image" Foreground="#1C1917" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
             </Border>
             <Border x:Name="TitleEditor" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="8"
-                    Background="#F8FFFFFF" BorderBrush="#2C978E" BorderThickness="1" CornerRadius="5" Padding="5" Panel.ZIndex="150">
+                    Background="#F8FFFFFF" BorderBrush="#78716C" BorderThickness="1" CornerRadius="5" Padding="5" Panel.ZIndex="150">
                 <TextBox x:Name="TitleEditorBox" MinWidth="180" MaxWidth="360" Height="27" Padding="5,2" BorderThickness="0"
                          KeyDown="TitleEditorBox_KeyDown" LostKeyboardFocus="TitleEditorBox_LostKeyboardFocus"/>
             </Border>

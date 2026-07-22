@@ -3,12 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SnapAnchor Preferences" Icon="pack://application:,,,/SnapAnchor;component/Assets/SnapAnchor-icon-512.png"
         Width="620" Height="470" MinWidth="580" MinHeight="400"
-        WindowStartupLocation="CenterOwner" Background="#FFFFFF" Foreground="#111827" FontFamily="Segoe UI" FontSize="11.5">
+        WindowStartupLocation="CenterOwner" Background="#FAF9F7" Foreground="#1C1917" FontFamily="Segoe UI" FontSize="11.5">
     <Window.Resources>
         <Style x:Key="DialogButton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/><Setter Property="MinHeight" Value="26"/><Setter Property="Padding" Value="10,4"/>
-            <Setter Property="Foreground" Value="#111827"/><Setter Property="Background" Value="#E5E7EB"/>
-            <Setter Property="BorderBrush" Value="#D1D5DB"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#1C1917"/><Setter Property="Background" Value="#E7E5E4"/>
+            <Setter Property="BorderBrush" Value="#D6D3D1"/><Setter Property="BorderThickness" Value="1"/><Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
                 <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="5" Padding="{TemplateBinding Padding}">
                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -17,11 +17,11 @@
             </ControlTemplate></Setter.Value></Setter>
         </Style>
         <Style x:Key="AccentDialogButton" TargetType="Button" BasedOn="{StaticResource DialogButton}">
-            <Setter Property="Background" Value="#2C978E"/><Setter Property="BorderBrush" Value="#2C978E"/>
+            <Setter Property="Background" Value="#292524"/><Setter Property="BorderBrush" Value="#292524"/><Setter Property="Foreground" Value="White"/>
         </Style>
-        <Style TargetType="TextBox"><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="BorderBrush" Value="#C9D0D9"/><Setter Property="Background" Value="White"/><Setter Property="MaxHeight" Value="26"/></Style>
-        <Style TargetType="ComboBox"><Setter Property="BorderBrush" Value="#C9D0D9"/><Setter Property="Background" Value="White"/><Setter Property="MaxHeight" Value="26"/></Style>
-        <Style TargetType="TabControl"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#D7DCE3"/></Style>
+        <Style TargetType="TextBox"><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="BorderBrush" Value="#D6D3D1"/><Setter Property="Background" Value="White"/><Setter Property="MaxHeight" Value="26"/></Style>
+        <Style TargetType="ComboBox"><Setter Property="BorderBrush" Value="#D6D3D1"/><Setter Property="Background" Value="White"/><Setter Property="MaxHeight" Value="26"/></Style>
+        <Style TargetType="TabControl"><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="#E7E5E4"/></Style>
         <Style TargetType="TabItem"><Setter Property="Padding" Value="6,3"/></Style>
     </Window.Resources>
     <DockPanel Margin="8" Background="White">
@@ -44,13 +44,13 @@
                     </DockPanel>
                     <CheckBox x:Name="RunOnStartupBox" Content="Run SnapAnchor on system startup" Margin="0,5" />
                     <CheckBox x:Name="RunAsAdministratorBox" Content="Always launch SnapAnchor as administrator" Margin="0,5" ToolTip="Windows will display a User Account Control prompt when SnapAnchor starts" />
-                    <TextBlock Text="Applies the next time SnapAnchor starts. Windows will show a UAC confirmation prompt." Foreground="#667085" FontSize="11" Margin="22,-1,0,4" />
+                    <TextBlock Text="Applies the next time SnapAnchor starts. Windows will show a UAC confirmation prompt." Foreground="#57534E" FontSize="11" Margin="22,-1,0,4" />
                     <CheckBox x:Name="AutoBackupBox" Content="Back up open pins and settings automatically" Margin="0,5" />
                     <CheckBox x:Name="KeepResponsiveBox" Content="Keep SnapAnchor running in the notification area when the dashboard closes" Margin="0,5" />
                     <Border Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,11,0,0">
                         <StackPanel>
                             <TextBlock Text="Configuration storage" FontWeight="SemiBold" />
-                            <TextBlock Text="Settings are stored locally under your Windows user profile. No account or cloud connection is used." TextWrapping="Wrap" Foreground="#667085" Margin="0,8,0,0" />
+                            <TextBlock Text="Settings are stored locally under your Windows user profile. No account or cloud connection is used." TextWrapping="Wrap" Foreground="#57534E" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -96,7 +96,7 @@
                         <ListBox x:Name="ExcludedAppsList" Height="74"/>
                         <Button Grid.Column="1" Content="Remove" Click="RemoveExcludedApp_Click" Style="{StaticResource DialogButton}" Margin="8,0,0,0" Padding="11,5" VerticalAlignment="Top"/>
                     </Grid>
-                    <TextBlock Grid.Row="12" Grid.ColumnSpan="2" Text="Windows lets SnapAnchor hide its own windows from video capture. Other applications are securely covered in still screenshots; video exclusion also requires privacy support from that application." Foreground="#667085" TextWrapping="Wrap" Margin="0,8,0,4"/>
+                    <TextBlock Grid.Row="12" Grid.ColumnSpan="2" Text="Windows lets SnapAnchor hide its own windows from video capture. Other applications are securely covered in still screenshots; video exclusion also requires privacy support from that application." Foreground="#57534E" TextWrapping="Wrap" Margin="0,8,0,4"/>
                 </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -112,11 +112,11 @@
                             <ComboBoxItem Content="Standard" Tag="Standard"/>
                             <ComboBoxItem Content="Large" Tag="Large"/>
                         </ComboBox>
-                        <TextBlock Text="Automatically follows Windows display scaling." Foreground="#667085" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        <TextBlock Text="Automatically follows Windows display scaling." Foreground="#57534E" VerticalAlignment="Center" Margin="12,0,0,0"/>
                     </StackPanel>
                     <StackPanel x:Name="AnnotationToolbarSettingsPanel" Grid.Row="1" Grid.Column="0">
                         <TextBlock Text="Annotation toolbar" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Drawing tools shown directly in the first capture row." Foreground="#667085" Margin="0,4,0,8"/>
+                        <TextBlock Text="Drawing tools shown directly in the first capture row." Foreground="#57534E" Margin="0,4,0,8"/>
                         <Grid HorizontalAlignment="Left">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <ListBox x:Name="ToolbarToolsList" Height="200" BorderBrush="#C9D0D9" BorderThickness="1" SelectionMode="Single"/>
@@ -132,7 +132,7 @@
                     </StackPanel>
                     <StackPanel x:Name="CaptureToolbarSettingsPanel" Grid.Row="1" Grid.Column="2">
                         <TextBlock Text="Capture toolbar" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="Output actions shown after the drawing tools." Foreground="#667085" Margin="0,4,0,8"/>
+                        <TextBlock Text="Output actions shown after the drawing tools." Foreground="#57534E" Margin="0,4,0,8"/>
                         <Grid HorizontalAlignment="Left">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <ListBox x:Name="CaptureToolbarToolsList" Height="200" BorderBrush="#C9D0D9" BorderThickness="1" SelectionMode="Single"/>
@@ -165,7 +165,7 @@
                         <TextBlock Grid.Row="8" Text="System audio device" VerticalAlignment="Center" Margin="0,7"/><ComboBox x:Name="RecordingOutputDeviceBox" Grid.Row="8" Grid.Column="1" Height="32" Margin="0,4" DisplayMemberPath="DisplayName" SelectedValuePath="DeviceName"/>
                         <TextBlock Grid.Row="9" Text="Microphone device" VerticalAlignment="Center" Margin="0,7"/><ComboBox x:Name="RecordingInputDeviceBox" Grid.Row="9" Grid.Column="1" Height="32" Margin="0,4" DisplayMemberPath="DisplayName" SelectedValuePath="DeviceName"/>
                         <TextBlock Grid.Row="10" Text="Recording folder" VerticalAlignment="Center" Margin="0,7"/><DockPanel Grid.Row="10" Grid.Column="1" Margin="0,4"><Button DockPanel.Dock="Right" Content="Browse" Click="BrowseRecording_Click" Style="{StaticResource AccentDialogButton}" Margin="8,0,0,0"/><TextBox x:Name="RecordingFolderBox" Height="32" Padding="7,5"/></DockPanel>
-                        <TextBlock Grid.Row="11" Grid.ColumnSpan="2" Text="MP4 uses Windows Media Foundation and stays entirely on this computer." Foreground="#667085" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="11" Grid.ColumnSpan="2" Text="MP4 uses Windows Media Foundation and stays entirely on this computer." Foreground="#57534E" Margin="0,10,0,0" TextWrapping="Wrap"/>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -201,7 +201,7 @@
                     <TextBlock Text="Capture history" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
                     <TextBlock Text="Maximum saved captures" />
                     <TextBox x:Name="HistoryLimitBox" Width="110" Height="32" HorizontalAlignment="Left" Padding="7,5" Margin="0,6,0,12" />
-                    <TextBlock Text="Completed captures are stored locally. When the limit is reached, the oldest captures are removed automatically." Foreground="#667085" TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left" LineHeight="20" />
+                    <TextBlock Text="Completed captures are stored locally. When the limit is reached, the oldest captures are removed automatically." Foreground="#57534E" TextWrapping="Wrap" MaxWidth="500" HorizontalAlignment="Left" LineHeight="20" />
                 </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -237,7 +237,7 @@
                     <CheckBox x:Name="AutoSaveBox" Content="Automatically save every completed capture" Margin="0,5,0,10" />
                     <TextBlock Text="Automatic-save folder" />
                     <DockPanel Margin="0,5,0,0"><Button DockPanel.Dock="Right" Content="Browse" Click="BrowseAuto_Click" Style="{StaticResource AccentDialogButton}" Margin="8,0,0,0"/><TextBox x:Name="AutoFolderBox" Height="32" Padding="7,5" /></DockPanel>
-                    <TextBlock Text="Tokens: $yyyy  $MM  $dd  $HH  $mm  $ss" Foreground="#667085" Margin="0,12,0,0" />
+                    <TextBlock Text="Tokens: $yyyy  $MM  $dd  $HH  $mm  $ss" Foreground="#57534E" Margin="0,12,0,0" />
                     <Separator Margin="0,14,0,10"/>
                     <TextBlock Text="Export appearance" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
                     <Grid>
@@ -285,7 +285,7 @@
                         <ListBox x:Name="HotkeyExcludedAppsList" Height="74"/>
                         <Button Grid.Column="1" Content="Remove" Click="RemoveHotkeyExcludedApp_Click" Style="{StaticResource DialogButton}" Margin="8,0,0,0" Padding="11,5" VerticalAlignment="Top"/>
                     </Grid>
-                    <TextBlock Grid.Row="10" Grid.ColumnSpan="2" Text="The emergency Alt+Shift+P shortcut always remains available so click-through pins can be recovered." Foreground="#667085" TextWrapping="Wrap" Margin="0,8,0,4"/>
+                    <TextBlock Grid.Row="10" Grid.ColumnSpan="2" Text="The emergency Alt+Shift+P shortcut always remains available so click-through pins can be recovered." Foreground="#57534E" TextWrapping="Wrap" Margin="0,8,0,4"/>
                 </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -306,7 +306,7 @@
                     <Border Background="White" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="7" Padding="10">
                         <StackPanel>
                             <TextBlock Text="Private by design" FontWeight="SemiBold" />
-                            <TextBlock Text="Text and QR/barcode recognition runs on this computer. Images are not uploaded to a cloud service." TextWrapping="Wrap" Foreground="#667085" Margin="0,8,0,0" />
+                            <TextBlock Text="Text and QR/barcode recognition runs on this computer. Images are not uploaded to a cloud service." TextWrapping="Wrap" Foreground="#57534E" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -315,20 +315,20 @@
             <TabItem Header="About">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="14">
-                    <TextBlock Text="SnapAnchor" FontSize="23" FontWeight="Bold" Foreground="#0F766E" />
+                    <TextBlock Text="SnapAnchor" FontSize="23" FontWeight="Bold" Foreground="#292524" />
                     <DockPanel Margin="0,2,0,3">
                         <Button x:Name="CopyVersionButton" DockPanel.Dock="Right" Content="Copy version information" Style="{StaticResource DialogButton}" Click="CopyVersion_Click" Margin="12,0,0,0"/>
                         <StackPanel>
-                            <TextBlock x:Name="VersionText" Text="Version" Foreground="#667085"/>
-                            <TextBlock x:Name="EditionText" Foreground="#667085" Margin="0,3,0,0"/>
+                            <TextBlock x:Name="VersionText" Text="Version" Foreground="#57534E"/>
+                            <TextBlock x:Name="EditionText" Foreground="#57534E" Margin="0,3,0,0"/>
                         </StackPanel>
                     </DockPanel>
                     <TextBlock Text="Local-first capture and floating visual references" FontSize="14" Margin="0,5,0,10" />
-                    <TextBlock Text="This is an independent implementation built with documented Windows APIs. It contains no Snipaste code, branding, or assets." TextWrapping="Wrap" Foreground="#667085" LineHeight="18" />
-                    <Border Background="#F8FAFC" BorderBrush="#D0D5DD" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,12,0,9">
+                    <TextBlock Text="This is an independent implementation built with documented Windows APIs. It contains no Snipaste code, branding, or assets." TextWrapping="Wrap" Foreground="#57534E" LineHeight="18" />
+                    <Border Background="#FAF9F7" BorderBrush="#E7E5E4" BorderThickness="1" CornerRadius="7" Padding="10" Margin="0,12,0,9">
                         <StackPanel>
                             <TextBlock Text="Diagnostics and recovery" FontWeight="SemiBold"/>
-                            <TextBlock Text="Unexpected errors are logged locally. Logs are retained for 14 days and open pins use verified generation backups." Foreground="#667085" TextWrapping="Wrap" Margin="0,5,0,9"/>
+                            <TextBlock Text="Unexpected errors are logged locally. Logs are retained for 14 days and open pins use verified generation backups." Foreground="#57534E" TextWrapping="Wrap" Margin="0,5,0,9"/>
                             <StackPanel Orientation="Horizontal">
                                 <Button Content="Open diagnostics folder" Style="{StaticResource DialogButton}" Click="OpenDiagnostics_Click" Margin="0,0,8,0"/>
                                 <Button Content="Copy system summary" Style="{StaticResource DialogButton}" Click="CopyDiagnostics_Click"/>
@@ -340,7 +340,7 @@
                     <CheckBox x:Name="CheckUpdatesDailyBox" Content="Check for updates every day" Margin="0,6,0,0"/>
                     <DockPanel Margin="0,7,0,0">
                         <Button DockPanel.Dock="Right" Content="Check now" Style="{StaticResource AccentDialogButton}" Click="CheckUpdates_Click" Margin="12,0,0,0"/>
-                        <TextBlock VerticalAlignment="Center" Foreground="#667085">
+                        <TextBlock VerticalAlignment="Center" Foreground="#57534E">
                             <Run Text="Updates are published on "/>
                             <Hyperlink NavigateUri="https://github.com/coolman1232004/SnapAnchor" RequestNavigate="GitHubLink_RequestNavigate">GitHub</Hyperlink>
                             <Run Text="."/>
