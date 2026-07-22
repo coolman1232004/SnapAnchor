@@ -159,9 +159,8 @@ internal static class Program
         {
             var workingArea = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
             var target = new Drawing.Rectangle(workingArea.Left + 40, workingArea.Top + 40, 320, 180);
-            var pin = new PinnedImageWindow(CreatePatternImage(320, 180)) { ShowActivated = false, Opacity = 0 };
+            var pin = new PinnedImageWindow(CreatePatternImage(320, 180), initialScreenPixelBounds: target) { ShowActivated = false, Opacity = 0 };
             pin.Show();
-            pin.SetScreenPixelBounds(target);
             pin.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
             NativeMethods.GetWindowRect(new System.Windows.Interop.WindowInteropHelper(pin).Handle, out var actual);
             var moved = pin.MoveFromAnnotationOverlay(new Vector(12, 8));
@@ -175,11 +174,16 @@ internal static class Program
                 pin.FindName("CancelTextSelectionButton") is Button;
             var selectableCursorDefaults = selectableTextLayer?.Cursor == System.Windows.Input.Cursors.Arrow &&
                 longSelectableTextLayer?.Cursor == System.Windows.Input.Cursors.Arrow;
+            var pixelPerfectPresentation = pin.FindName("Frame") is Border { BorderThickness: var frameThickness } &&
+                frameThickness == new Thickness(0) &&
+                pin.FindName("PinOutline") is Border &&
+                pin.FindName("PinnedImage") is Image pinnedImage &&
+                RenderOptions.GetBitmapScalingMode(pinnedImage) == BitmapScalingMode.NearestNeighbor;
             pin.Close();
             return (Target: target, Actual: actual, SelectableLayers: selectableLayers,
                 SelectableCursorDefaults: selectableCursorDefaults,
                 SelectableTextDefaultOff: !new AppSettings().PinTextSelectableByDefault,
-                MoveModeWorks: moveModeWorks);
+                MoveModeWorks: moveModeWorks, PixelPerfectPresentation: pixelPerfectPresentation);
         });
         var selectableCursorPolicy =
             PinnedImageWindow.SelectableTextCursor([new Rect(20, 15, 80, 24)], new Point(40, 25)) == System.Windows.Input.Cursors.IBeam &&
@@ -190,8 +194,9 @@ internal static class Program
             Math.Abs(pinPlacement.Actual.Width - pinPlacement.Target.Width) > 1 ||
             Math.Abs(pinPlacement.Actual.Height - pinPlacement.Target.Height) > 1 ||
             !pinPlacement.SelectableLayers || !pinPlacement.SelectableCursorDefaults ||
-            !pinPlacement.SelectableTextDefaultOff || !pinPlacement.MoveModeWorks || !selectableCursorPolicy) return 39;
-        Console.WriteLine("PIN PLACEMENT: physical bounds and context-aware selectable OCR cursors verified");
+            !pinPlacement.SelectableTextDefaultOff || !pinPlacement.MoveModeWorks ||
+            !pinPlacement.PixelPerfectPresentation || !selectableCursorPolicy) return 39;
+        Console.WriteLine("PIN PLACEMENT: stable physical bounds, pixel-perfect rendering and context-aware selectable OCR cursors verified");
 
         var sharpnessPolicy = RunSta(() =>
         {

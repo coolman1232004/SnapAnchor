@@ -1,6 +1,6 @@
 param(
     [string]$DistDirectory = 'dist',
-    [string]$Version = '2.1.3',
+    [string]$Version = '2.1.4',
     [string]$CertificateThumbprint = $env:SNAPANCHOR_CERT_THUMBPRINT
 )
 
@@ -107,7 +107,7 @@ $manifest = [ordered]@{
     signed = -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)
     downloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Setup-win-x64.exe'
     portableDownloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Portable-win-x64.zip'
-    releaseNotes = 'SnapAnchor 2.1.3 confines the pinned-image annotation overlay to the pin''s current monitor, eliminating cross-monitor DPI drift.'
+    releaseNotes = 'SnapAnchor 2.1.4 preserves native screenshot pixels, correct 100% zoom, and original placement across mixed-DPI displays.'
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dist 'release.json') -Encoding UTF8
 

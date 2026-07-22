@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.4] - 2026-07-22
+
+- Preserved a captured region's physical pixel size and original screen position when it is pinned on a mixed-DPI monitor
+- Corrected the zoom badge so native-size pins report 100% instead of 80% on a display set to 125%
+- Removed layout-consuming pin borders that subtly rescaled and softened every pinned screenshot
+- Switched pinned screenshots to pixel-preserving rendering and reapplied initial native bounds after monitor DPI transitions settle
+- Added 125%-scaling, initial physical placement, and pixel-sharp rendering regression coverage
+
 ## [2.1.3] - 2026-07-22
 
 - Replaced the cross-desktop pinned-image annotation window with an overlay scoped to the pin's current monitor

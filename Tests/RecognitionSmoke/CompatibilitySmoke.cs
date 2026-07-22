@@ -20,6 +20,11 @@ internal static class CompatibilitySmoke
         if (portrait.Height <= portrait.Width || constrained.Width > 160 || constrained.Height > 120)
             throw new InvalidOperationException("Portrait or constrained-display sizing is invalid.");
 
+        var nativeLogicalSize = DpiLayoutService.LogicalSizeForPhysicalPixels(1000, 625, 1.25, 1.25);
+        var nativeZoom = DpiLayoutService.PhysicalZoomPercent(nativeLogicalSize.Width, 1.25, 1000);
+        if (Math.Abs(nativeLogicalSize.Width - 800) > 0.01 || Math.Abs(nativeLogicalSize.Height - 500) > 0.01 || nativeZoom != 100)
+            throw new InvalidOperationException("A native-size bitmap was not preserved at 125% display scaling.");
+
         var virtualBounds = new System.Drawing.Rectangle(-1080, -1920, 3000, 3000);
         var portraitRegion = CaptureCoordinateService.ToBitmapRegion(
             new Point(-200, 500), new Point(-1000, -1800), virtualBounds, 3000, 3000);

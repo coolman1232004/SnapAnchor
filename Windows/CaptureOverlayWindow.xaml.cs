@@ -819,9 +819,8 @@ public partial class CaptureOverlayWindow : Window
             pixelRegion.Width,
             pixelRegion.Height);
         Close();
-        var pin = new PinnedImageWindow(image, historyRecordId: historyRecordId);
+        var pin = new PinnedImageWindow(image, historyRecordId: historyRecordId, initialScreenPixelBounds: pinBounds);
         pin.Show();
-        pin.SetScreenPixelBounds(pinBounds);
         if (asThumbnail) pin.SetThumbnailMode(true);
     }
 

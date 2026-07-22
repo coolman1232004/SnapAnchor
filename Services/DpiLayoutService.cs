@@ -62,4 +62,11 @@ internal static class DpiLayoutService
     internal static Size AvailableLogicalSize(Size workingAreaPixels, double scaleX, double scaleY) => new(
         Math.Max(1, workingAreaPixels.Width / Math.Max(0.1, scaleX) - 24),
         Math.Max(1, workingAreaPixels.Height / Math.Max(0.1, scaleY) - 24));
+
+    internal static double PhysicalZoomPercent(double logicalWidth, double dpiScaleX, int imagePixelWidth) =>
+        Math.Max(1, Math.Round(logicalWidth * Math.Max(0.1, dpiScaleX) / Math.Max(1, imagePixelWidth) * 100));
+
+    internal static Size LogicalSizeForPhysicalPixels(int pixelWidth, int pixelHeight, double scaleX, double scaleY) => new(
+        Math.Max(1, pixelWidth / Math.Max(0.1, scaleX)),
+        Math.Max(1, pixelHeight / Math.Max(0.1, scaleY)));
 }

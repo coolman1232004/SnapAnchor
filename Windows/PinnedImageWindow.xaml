@@ -3,13 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:SnapAnchor.Controls"
         WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
-        AllowsTransparency="True" Background="Transparent"
+        AllowsTransparency="True" Background="Transparent" SnapsToDevicePixels="True" UseLayoutRounding="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown" MouseWheel="Window_MouseWheel"
         MouseRightButtonUp="Window_MouseRightButtonUp" KeyDown="Window_KeyDown">
-    <Border x:Name="Frame" Background="#05000000" BorderBrush="#44000000" BorderThickness="1" CornerRadius="3">
+    <Border x:Name="Frame" Background="#05000000" BorderThickness="0" CornerRadius="3" SnapsToDevicePixels="True" UseLayoutRounding="True">
         <Grid ClipToBounds="True">
             <Grid x:Name="PinnedImageSurface">
-                <Image x:Name="PinnedImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                <Image x:Name="PinnedImage" Stretch="Uniform" SnapsToDevicePixels="True" UseLayoutRounding="True"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
                 <Canvas x:Name="SelectableTextLayer" Visibility="Collapsed" Background="Transparent" Cursor="Arrow"
                         MouseLeftButtonDown="SelectableText_MouseLeftButtonDown"
                         MouseMove="SelectableText_MouseMove"
@@ -19,7 +20,8 @@
             <ScrollViewer x:Name="LongImageViewer" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           PanningMode="VerticalOnly" PreviewMouseWheel="LongImageViewer_PreviewMouseWheel" Background="#08000000">
                 <Grid x:Name="LongImageSurface" HorizontalAlignment="Left" VerticalAlignment="Top">
-                    <Image x:Name="LongPinnedImage" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image x:Name="LongPinnedImage" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top"
+                           SnapsToDevicePixels="True" UseLayoutRounding="True" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                     <Canvas x:Name="LongSelectableTextLayer" Visibility="Collapsed" Background="Transparent" Cursor="Arrow"
                             MouseLeftButtonDown="SelectableText_MouseLeftButtonDown"
                             MouseMove="SelectableText_MouseMove"
@@ -70,6 +72,8 @@
                     </Button>
                 </StackPanel>
             </Border>
+            <Border x:Name="PinOutline" BorderBrush="#44000000" BorderThickness="1" CornerRadius="3"
+                    IsHitTestVisible="False" Panel.ZIndex="300" SnapsToDevicePixels="True"/>
         </Grid>
     </Border>
 </Window>

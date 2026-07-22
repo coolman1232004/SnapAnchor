@@ -60,7 +60,7 @@ public partial class PinnedImageWindow : Window
     private readonly BitmapCache _zoomBitmapCache = new() { RenderAtScale = 1 };
     private Rect _targetZoomBounds;
     private bool _zoomAnimating;
-    private double _zoomReferenceWidth;
+    private System.Drawing.Rectangle? _initialScreenPixelBounds;
     private bool _shadowEnabled;
     private string _sourceFilePath = string.Empty;
     private CancellationTokenSource? _selectableTextCancellation;
@@ -79,7 +79,8 @@ public partial class PinnedImageWindow : Window
     private PinnedAnnotationOverlayWindow? _annotationOverlay;
 
     public PinnedImageWindow(BitmapSource source, bool startEditing = false, string? groupName = null, string? backgroundMode = null,
-        string? historyRecordId = null, bool applyTextSelectableDefault = true)
+        string? historyRecordId = null, bool applyTextSelectableDefault = true,
+        System.Drawing.Rectangle? initialScreenPixelBounds = null)
     {
         InitializeComponent();
         _settings = SettingsService.Load();
@@ -91,8 +92,8 @@ public partial class PinnedImageWindow : Window
         Title = $"SnapAnchor - {_pinTitle}";
         _historyRecordId = historyRecordId;
         _enableSelectableTextOnLoad = applyTextSelectableDefault && !startEditing && _settings.PinTextSelectableByDefault;
+        _initialScreenPixelBounds = initialScreenPixelBounds;
         _longScrollable = source.PixelHeight > source.PixelWidth * 2.5;
-        _zoomReferenceWidth = Math.Max(1, source.Width > 0 ? source.Width : source.PixelWidth);
         PinnedImage.Source = source;
         LongPinnedImage.Source = source;
         Opacity = Math.Clamp(_settings.PinDefaultOpacity / 100.0, 0.15, 1);
@@ -117,6 +118,25 @@ public partial class PinnedImageWindow : Window
         {
             ApplyCaptureAffinityToWindow();
             ApplyVirtualDesktopBinding();
+            ApplyInitialScreenPixelBounds();
+        };
+        DpiChanged += (_, _) =>
+        {
+            if (_initialScreenPixelBounds is not null)
+                Dispatcher.BeginInvoke(ApplyInitialScreenPixelBounds, DispatcherPriority.Render);
+        };
+        ContentRendered += (_, _) =>
+        {
+            if (_initialScreenPixelBounds is null) return;
+            Dispatcher.BeginInvoke(() =>
+            {
+                ApplyInitialScreenPixelBounds();
+                Dispatcher.BeginInvoke(() =>
+                {
+                    ApplyInitialScreenPixelBounds();
+                    _initialScreenPixelBounds = null;
+                }, DispatcherPriority.ContextIdle);
+            }, DispatcherPriority.Render);
         };
         Closed += (_, _) =>
         {
@@ -421,6 +441,16 @@ public partial class PinnedImageWindow : Window
     public void SetScreenPixelBounds(System.Drawing.Rectangle bounds)
     {
         StopZoomAnimation(false);
+        ApplyScreenPixelBounds(bounds);
+    }
+
+    private void ApplyInitialScreenPixelBounds()
+    {
+        if (_initialScreenPixelBounds is { } bounds) ApplyScreenPixelBounds(bounds);
+    }
+
+    private void ApplyScreenPixelBounds(System.Drawing.Rectangle bounds)
+    {
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return;
         NativeMethods.SetWindowPos(
@@ -585,7 +615,6 @@ public partial class PinnedImageWindow : Window
     {
         InvalidateSelectableText();
         _baseSource = image;
-        _zoomReferenceWidth = Math.Max(1, image.Width > 0 ? image.Width : image.PixelWidth);
         _grayscale = _inverted = false;
         ApplyFilters();
     }
@@ -805,8 +834,8 @@ public partial class PinnedImageWindow : Window
     private void SetSelected(bool selected)
     {
         if (selected) SelectedPins.Add(this); else SelectedPins.Remove(this);
-        Frame.BorderBrush = selected ? Brushes.DeepSkyBlue : new SolidColorBrush(Color.FromArgb(68, 0, 0, 0));
-        Frame.BorderThickness = selected ? new Thickness(2) : new Thickness(1);
+        PinOutline.BorderBrush = selected ? Brushes.DeepSkyBlue : new SolidColorBrush(Color.FromArgb(68, 0, 0, 0));
+        PinOutline.BorderThickness = selected ? new Thickness(2) : new Thickness(1);
     }
 
     private static void ClearSelection()
@@ -879,10 +908,11 @@ public partial class PinnedImageWindow : Window
 
     private void SetZoom(double scale)
     {
-        var dpiWidth = _source.Width > 0 ? _source.Width : _source.PixelWidth;
-        var dpiHeight = _source.Height > 0 ? _source.Height : _source.PixelHeight;
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var logicalSize = DpiLayoutService.LogicalSizeForPhysicalPixels(
+            _source.PixelWidth, _source.PixelHeight, dpi.DpiScaleX, dpi.DpiScaleY);
         var centerX = Left + Width / 2; var centerY = Top + Height / 2;
-        QueueSmoothResizeTo(Math.Max(60, dpiWidth * scale), Math.Max(40, dpiHeight * scale), centerX, centerY);
+        QueueSmoothResizeTo(Math.Max(60, logicalSize.Width * scale), Math.Max(40, logicalSize.Height * scale), centerX, centerY);
     }
 
     private void ApplyFilters()

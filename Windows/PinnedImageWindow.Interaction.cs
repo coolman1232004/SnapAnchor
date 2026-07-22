@@ -106,8 +106,8 @@ public partial class PinnedImageWindow
     {
         _targetZoomBounds = new Rect(centerX - width / 2, centerY - height / 2, width, height);
         if (!_longScrollable) PinnedImage.CacheMode = _zoomBitmapCache;
-        RenderOptions.SetBitmapScalingMode(PinnedImage, BitmapScalingMode.LowQuality);
-        RenderOptions.SetBitmapScalingMode(LongPinnedImage, BitmapScalingMode.LowQuality);
+        RenderOptions.SetBitmapScalingMode(PinnedImage, BitmapScalingMode.NearestNeighbor);
+        RenderOptions.SetBitmapScalingMode(LongPinnedImage, BitmapScalingMode.NearestNeighbor);
         _zoomAnimating = true;
         _zoomAnimationTimer.Start();
         ShowZoomPercent(width);
@@ -140,8 +140,8 @@ public partial class PinnedImageWindow
         }
         _zoomAnimating = false;
         _zoomAnimationTimer.Stop();
-        RenderOptions.SetBitmapScalingMode(PinnedImage, BitmapScalingMode.HighQuality);
-        RenderOptions.SetBitmapScalingMode(LongPinnedImage, BitmapScalingMode.HighQuality);
+        RenderOptions.SetBitmapScalingMode(PinnedImage, BitmapScalingMode.NearestNeighbor);
+        RenderOptions.SetBitmapScalingMode(LongPinnedImage, BitmapScalingMode.NearestNeighbor);
         PinnedImage.CacheMode = null;
         _targetZoomBounds = new Rect(Left, Top, Width, Height);
     }
@@ -152,7 +152,8 @@ public partial class PinnedImageWindow
 
     private void ShowZoomPercent(double width)
     {
-        ZoomText.Text = $"{Math.Max(1, Math.Round(width / Math.Max(1, _zoomReferenceWidth) * 100))}%";
+        var dpi = VisualTreeHelper.GetDpi(this);
+        ZoomText.Text = $"{DpiLayoutService.PhysicalZoomPercent(width, dpi.DpiScaleX, _source.PixelWidth)}%";
         ZoomBadge.Visibility = Visibility.Visible;
         _zoomBadgeTimer.Stop();
         _zoomBadgeTimer.Start();
