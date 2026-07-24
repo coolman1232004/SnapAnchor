@@ -20,11 +20,12 @@ internal static class ToolbarThemeService
     internal static void ApplyTo(ResourceDictionary resources, string? mode = null)
     {
         var normalized = mode is null ? _currentMode : Normalize(mode);
+        // Compact targets ~32–34 px outer height; larger modes scale icons evenly.
         var metrics = normalized switch
         {
-            "Large" => new Metrics(36, 22, 18, 22, new Thickness(5), new Thickness(1.5, 0, 1.5, 0), new Thickness(7, 3, 7, 3), new Thickness(4, 7, 4, 7)),
-            "Standard" => new Metrics(32, 20, 16, 20, new Thickness(4), new Thickness(1, 0, 1, 0), new Thickness(6, 2, 6, 2), new Thickness(3, 6, 3, 6)),
-            _ => new Metrics(28, 18, 14, 18, new Thickness(4), new Thickness(1, 0, 1, 0), new Thickness(6, 2, 6, 2), new Thickness(3, 5, 3, 5))
+            "Large" => new Metrics(34, 20, 14, 20, new Thickness(4), new Thickness(2.5, 0, 2.5, 0), new Thickness(7, 4, 7, 4), new Thickness(5, 6, 5, 6)),
+            "Standard" => new Metrics(30, 18, 13, 18, new Thickness(3.5), new Thickness(2, 0, 2, 0), new Thickness(6, 3.5, 6, 3.5), new Thickness(4, 5, 4, 5)),
+            _ => new Metrics(26, 16, 12, 16, new Thickness(3), new Thickness(2, 0, 2, 0), new Thickness(5, 3, 5, 3), new Thickness(4, 4, 4, 4))
         };
         resources["ToolbarButtonSize"] = metrics.Button;
         resources["ToolbarIconSize"] = metrics.Icon;

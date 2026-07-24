@@ -54,15 +54,15 @@
                 <TextBlock Text="Drag the smaller area to recognize" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
             </Border>
 
-            <Border x:Name="ActionBar" Visibility="Collapsed" Background="{DynamicResource ToolbarSurfaceBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="1" CornerRadius="7" Padding="{DynamicResource ToolbarFramePadding}" Panel.ZIndex="4000" SnapsToDevicePixels="True" UseLayoutRounding="True">
-                <Border.Effect><DropShadowEffect Color="#26000000" BlurRadius="8" ShadowDepth="2" Opacity="0.22"/></Border.Effect>
-                <StackPanel Orientation="Horizontal">
-                    <Grid Width="{DynamicResource ToolbarGripWidth}" Height="{DynamicResource ToolbarButtonSize}" Margin="0,0,2,0" IsHitTestVisible="False">
-                        <UniformGrid Rows="3" Columns="2" Width="8" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/>
+            <Border x:Name="ActionBar" Style="{StaticResource SnapAnchorToolbarFrameStyle}" Visibility="Collapsed" Panel.ZIndex="4000">
+                <Border.Effect><DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="1" Opacity="0.14" Direction="270"/></Border.Effect>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Grid Width="{DynamicResource ToolbarGripWidth}" Height="{DynamicResource ToolbarButtonSize}" Margin="0,0,2,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                        <UniformGrid Rows="3" Columns="2" Width="6" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/>
                         </UniformGrid>
                     </Grid>
-                    <WrapPanel x:Name="CaptureAnnotationToolPanel">
+                    <WrapPanel x:Name="CaptureAnnotationToolPanel" VerticalAlignment="Center">
                         <Button Style="{StaticResource CaptureActionButton}" Tag="Rectangle" ToolTip="Rectangle" Click="QuickAnnotation_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarRectangleIcon}"/></Button>
                         <Button Style="{StaticResource CaptureActionButton}" Tag="Ellipse" ToolTip="Ellipse" Click="QuickAnnotation_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarEllipseIcon}"/></Button>
                         <Button Style="{StaticResource CaptureActionButton}" Tag="Arrow" ToolTip="Arrow" Click="QuickAnnotation_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarArrowIcon}"/></Button>
@@ -76,18 +76,18 @@
                         <Button Style="{StaticResource CaptureActionButton}" Tag="Eraser" ToolTip="Eraser" Click="QuickAnnotation_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarEraserIcon}"/></Button>
                         <Button Style="{StaticResource CaptureActionButton}" Tag="Magnify" ToolTip="Magnifier" Click="QuickAnnotation_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarMagnifyIcon}"/></Button>
                     </WrapPanel>
-                    <Border Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}"/>
-                    <StackPanel x:Name="AnnotationHistoryPanel" Orientation="Horizontal">
+                    <Border Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}" VerticalAlignment="Center"/>
+                    <StackPanel x:Name="AnnotationHistoryPanel" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="CaptureUndoButton" IsEnabled="False" Style="{StaticResource CaptureActionButton}" ToolTip="Undo (Ctrl+Z)" Click="AnnotationUndo_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarUndoIcon}"/></Button>
                         <Button x:Name="CaptureRedoButton" IsEnabled="False" Style="{StaticResource CaptureActionButton}" ToolTip="Redo (Ctrl+Y)" Click="AnnotationRedo_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarRedoIcon}"/></Button>
-                        <Border Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}"/>
+                        <Border Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}" VerticalAlignment="Center"/>
                     </StackPanel>
-                    <StackPanel x:Name="CaptureActionPanel" Orientation="Horizontal">
+                    <StackPanel x:Name="CaptureActionPanel" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="CopyCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="Copy" ToolTip="Copy" Click="Copy_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarCopyIcon}"/></Button>
                         <Button x:Name="PinCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="Pin" ToolTip="Pin" Click="Pin_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarPinIcon}"/></Button>
                         <Button x:Name="PinThumbnailCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="PinThumbnail" ToolTip="Pin as thumbnail" Click="PinThumbnail_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarPinThumbnailIcon}"/></Button>
                         <Button x:Name="SaveCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="Save" ToolTip="Save as image" Click="Save_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarSaveIcon}"/></Button>
-                        <Button x:Name="QuickSaveCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="QuickSave" ToolTip="Quick save" Click="QuickSave_Click"><Path Width="{DynamicResource ToolbarIconSize}" Height="{DynamicResource ToolbarIconSize}" Data="{StaticResource ToolbarQuickSaveIcon}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform"/></Button>
+                        <Button x:Name="QuickSaveCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="QuickSave" ToolTip="Quick save" Click="QuickSave_Click"><Path Style="{StaticResource ToolbarFilledIconPathStyle}" Data="{StaticResource ToolbarQuickSaveIcon}"/></Button>
                         <Button x:Name="LongCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="LongCapture" ToolTip="Long scrolling screenshot (L)" Click="LongCapture_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarLongCaptureIcon}"/></Button>
                         <Button x:Name="RecordCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="Record" ToolTip="Record selected region (R)" Click="Record_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarRecordIcon}"/></Button>
                         <Button x:Name="OcrCaptureActionButton" Style="{StaticResource CaptureActionButton}" Tag="OCR" ToolTip="Recognize text and QR/barcodes" Click="Recognize_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarOcrIcon}"/></Button>

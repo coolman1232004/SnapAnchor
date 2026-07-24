@@ -888,8 +888,8 @@ internal static class Program
             return defaultsMatch && customVisibleTags.SequenceEqual(new[] { "Magnify", "Text" }) &&
                 swatches == 20 && ((StackPanel)editor.FindName("TextOptionsPanel")).Visibility == Visibility.Visible &&
                 ((StackPanel)editor.FindName("ShapeOptionsPanel")).Visibility == Visibility.Collapsed &&
-                textToolButton.Width == 28 && textToolButton.Height == 28 && textToolButton.Padding == new Thickness(4) &&
-                textToolButton.Margin == new Thickness(1, 0, 1, 0) &&
+                textToolButton.Width == 26 && textToolButton.Height == 26 && textToolButton.Padding == new Thickness(3) &&
+                textToolButton.Margin == new Thickness(2, 0, 2, 0) &&
                 primaryToolbar.DesiredSize.Height <= 34.1 &&
                 textToolButton.Content is System.Windows.Shapes.Path &&
                 shapeProperties.Children.OfType<Button>().All(button => button.Tag is null) &&
@@ -928,10 +928,14 @@ internal static class Program
                 .Select(button => button.Tag as string)
                 .ToArray();
             var compactSpacing = panel.Children.OfType<Button>().All(button =>
-                button.Width == 28 && button.Height == 28 && button.Padding == new Thickness(4) && button.Margin == new Thickness(1, 0, 1, 0));
+                button.Width == 26 && button.Height == 26 && button.Padding == new Thickness(3) && button.Margin == new Thickness(2, 0, 2, 0));
             var actionBar = (Border)overlay.FindName("ActionBar");
+            // Collapsed bars report 0 height; measure as Hidden so compact chrome is validated.
+            var previousVisibility = actionBar.Visibility;
+            actionBar.Visibility = Visibility.Hidden;
             actionBar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var compactHeight = actionBar.DesiredSize.Height <= 34.1;
+            var compactHeight = actionBar.DesiredSize.Height is >= 30 and <= 34.1;
+            actionBar.Visibility = previousVisibility;
             var historySlotsStartMuted = ((StackPanel)overlay.FindName("AnnotationHistoryPanel")).Visibility == Visibility.Visible &&
                 !((Button)overlay.FindName("CaptureUndoButton")).IsEnabled &&
                 !((Button)overlay.FindName("CaptureRedoButton")).IsEnabled;

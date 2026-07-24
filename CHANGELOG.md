@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.24] - 2026-07-24
+
+- **Annotation / capture toolbar polish:** compact Snipaste-like chrome (~32–34 px)
+- Even icon size (16 px strokes, consistent weight) and 4–6 px gaps
+- Cool light surface (`#F8F9FA`), subtle border, 6 px corners, soft drop shadow
+- Clear hover / active states; keyboard focus without layout jump
+- Shared frame style for capture action bar and annotation primary toolbar
+
 ## [2.1.23] - 2026-07-24
 
 - **Code-judo follow-up to P2 review:** still capture is **GDI-first**; DXGI only retries when opted in and GDI looks mostly blank

@@ -11,11 +11,11 @@
             <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource SnapAnchorToolbarButtonStyle}"/>
             <Style x:Key="ActionIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}"/>
             <Style x:Key="PropertyButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
-                <Setter Property="Width" Value="30"/><Setter Property="Height" Value="27"/><Setter Property="Padding" Value="3"/><Setter Property="FontSize" Value="14"/>
+                <Setter Property="Width" Value="26"/><Setter Property="Height" Value="26"/><Setter Property="Padding" Value="2"/><Setter Property="FontSize" Value="12"/>
             </Style>
             <Style x:Key="PaletteButton" TargetType="Button">
-                <Setter Property="Width" Value="13"/><Setter Property="Height" Value="13"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0"/>
-                <Setter Property="BorderBrush" Value="#7B8492"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Width" Value="12"/><Setter Property="Height" Value="12"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="1"/>
+                <Setter Property="BorderBrush" Value="#D1D5DB"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Focusable" Value="False"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             </Style>
         </ResourceDictionary>
@@ -25,17 +25,17 @@
         <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <TextBlock x:Name="StatusText" Visibility="Collapsed"/>
 
-        <Grid x:Name="ToolbarHost" Grid.Row="1" HorizontalAlignment="Center" Margin="0,2,0,0" Panel.ZIndex="20">
-            <Grid.Effect><DropShadowEffect Color="#26000000" BlurRadius="8" ShadowDepth="2" Opacity="0.22"/></Grid.Effect>
+        <Grid x:Name="ToolbarHost" Grid.Row="1" HorizontalAlignment="Center" Margin="0,4,0,0" Panel.ZIndex="20">
+            <Grid.Effect><DropShadowEffect Color="#000000" BlurRadius="12" ShadowDepth="1" Opacity="0.14" Direction="270"/></Grid.Effect>
             <StackPanel>
-                <Border x:Name="PrimaryToolbarFrame" HorizontalAlignment="Left" Background="{DynamicResource ToolbarSurfaceBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="1" CornerRadius="7" Padding="{DynamicResource ToolbarFramePadding}" SnapsToDevicePixels="True">
-                    <StackPanel Orientation="Horizontal">
-                        <Grid Width="{DynamicResource ToolbarGripWidth}" Height="{DynamicResource ToolbarButtonSize}" Margin="0,0,2,0" IsHitTestVisible="False">
-                            <UniformGrid Rows="3" Columns="2" Width="8" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/><Ellipse Fill="{DynamicResource ToolbarGripBrush}" Margin="1"/>
+                <Border x:Name="PrimaryToolbarFrame" Style="{StaticResource SnapAnchorToolbarFrameStyle}" HorizontalAlignment="Left">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Grid Width="{DynamicResource ToolbarGripWidth}" Height="{DynamicResource ToolbarButtonSize}" Margin="0,0,2,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                            <UniformGrid Rows="3" Columns="2" Width="6" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/><Ellipse Width="2" Height="2" Fill="{DynamicResource ToolbarGripBrush}" Margin="0.5"/>
                             </UniformGrid>
                         </Grid>
-                        <WrapPanel x:Name="ToolPanel">
+                        <WrapPanel x:Name="ToolPanel" VerticalAlignment="Center">
                             <Button x:Name="RectangleToolButton" Style="{StaticResource IconButton}" Tag="Rectangle" ToolTip="Rectangle" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarRectangleIcon}"/></Button>
                             <Button x:Name="EllipseToolButton" Style="{StaticResource IconButton}" Tag="Ellipse" ToolTip="Ellipse" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarEllipseIcon}"/></Button>
                             <Button x:Name="ArrowToolButton" Style="{StaticResource IconButton}" Tag="Arrow" ToolTip="Arrow" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarArrowIcon}"/></Button>
@@ -49,10 +49,10 @@
                             <Button x:Name="EraserToolButton" Style="{StaticResource IconButton}" Tag="Eraser" ToolTip="Eraser" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarEraserIcon}"/></Button>
                             <Button x:Name="MagnifyToolButton" Style="{StaticResource IconButton}" Tag="Magnify" ToolTip="Magnifier" Click="Tool_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarMagnifyIcon}"/></Button>
                         </WrapPanel>
-                        <Border Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}"/>
+                        <Border Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}" VerticalAlignment="Center"/>
                         <Button Style="{StaticResource IconButton}" ToolTip="Undo (Ctrl+Z)" Click="Undo_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarUndoIcon}"/></Button>
                         <Button Style="{StaticResource IconButton}" ToolTip="Redo (Ctrl+Y)" Click="Redo_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarRedoIcon}"/></Button>
-                        <Border x:Name="ActionSeparator" Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}"/>
+                        <Border x:Name="ActionSeparator" Width="1" Height="{DynamicResource ToolbarSeparatorHeight}" Background="{DynamicResource ToolbarSeparatorBrush}" Margin="{DynamicResource ToolbarSeparatorMargin}" VerticalAlignment="Center"/>
                         <Button x:Name="SaveActionButton" Style="{StaticResource ActionIconButton}" ToolTip="Save image" Click="Save_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarSaveIcon}"/></Button>
                         <Button x:Name="CopyActionButton" Style="{StaticResource ActionIconButton}" ToolTip="Copy image" Click="Copy_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarCopyIcon}"/></Button>
                         <Button x:Name="ApplyActionButton" Style="{StaticResource ActionIconButton}" ToolTip="Finish" Click="Apply_Click"><Path Style="{StaticResource ToolbarIconPathStyle}" Data="{StaticResource ToolbarApplyIcon}"/></Button>
@@ -60,7 +60,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border x:Name="PropertiesToolbarFrame" Background="{DynamicResource ToolbarSurfaceBrush}" BorderBrush="{DynamicResource ToolbarBorderBrush}" BorderThickness="1" CornerRadius="6" HorizontalAlignment="Left" Margin="0,2,0,0">
+                <Border x:Name="PropertiesToolbarFrame" Style="{StaticResource SnapAnchorToolbarFrameStyle}" HorizontalAlignment="Left" Margin="0,3,0,0">
                     <StackPanel x:Name="StyleOptionsRow" Orientation="Horizontal">
                         <StackPanel x:Name="ShapeOptionsPanel" Orientation="Horizontal">
                             <Button x:Name="ShapeSizeButton" Style="{StaticResource PropertyButton}" Content="•" ToolTip="Stroke size" Click="SizeCycle_Click"/>
