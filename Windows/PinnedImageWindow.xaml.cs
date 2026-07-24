@@ -565,27 +565,49 @@ public partial class PinnedImageWindow : Window
         overlay.Show();
     }
 
-    internal Vector MoveFromAnnotationOverlay(Vector requestedDelta)
+    /// <summary>
+    /// Move this pin using physical HWND coordinates. The annotation overlay
+    /// reports deltas in its own logical space; converting via overlay DPI and
+    /// applying SetWindowPos avoids WPF Left/Top thrash on mixed-DPI boundaries.
+    /// </summary>
+    internal void MoveFromAnnotationOverlayPhysical(Vector overlayLogicalDelta, DpiScale overlayDpi)
     {
         if (_positionLocked)
         {
             ShowPinStatus("Position locked");
-            return default;
+            return;
         }
 
         StopZoomAnimation(true);
-        var before = new Point(Left, Top);
-        Left += requestedDelta.X;
-        Top += requestedDelta.Y;
-        return new Vector(Left - before.X, Top - before.Y);
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || !NativeMethods.GetWindowRect(handle, out var rect)) return;
+
+        var dx = (int)Math.Round(overlayLogicalDelta.X * Math.Max(0.1, overlayDpi.DpiScaleX));
+        var dy = (int)Math.Round(overlayLogicalDelta.Y * Math.Max(0.1, overlayDpi.DpiScaleY));
+        if (dx == 0 && dy == 0) return;
+
+        NativeMethods.SetWindowPos(
+            handle,
+            IntPtr.Zero,
+            rect.Left + dx,
+            rect.Top + dy,
+            rect.Width,
+            rect.Height,
+            NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);
     }
 
-    internal Vector CompleteAnnotationOverlayMove()
+    /// <summary>Test helper: logical move used by older smoke checks.</summary>
+    internal Vector MoveFromAnnotationOverlay(Vector requestedDelta)
     {
-        var before = new Point(Left, Top);
+        var dpi = DpiLayoutService.WindowScale(this);
+        MoveFromAnnotationOverlayPhysical(requestedDelta, dpi);
+        return requestedDelta;
+    }
+
+    internal void CompleteAnnotationOverlayMove()
+    {
         if (!_positionLocked && _edgeSnapping) SnapToCurrentMonitorEdges();
         SaveSession();
-        return new Vector(Left - before.X, Top - before.Y);
     }
 
     public void BeginCropMode()

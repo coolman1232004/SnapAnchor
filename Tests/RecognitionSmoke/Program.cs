@@ -319,7 +319,7 @@ internal static class Program
                 overlay = (PinnedAnnotationOverlayWindow?)typeof(PinnedImageWindow)
                     .GetField("_annotationOverlay", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                     .GetValue(pin);
-                if (overlay is null) return (ReceivesPointer: false, Aligned: false, MatchesOwnerMonitor: false, Visible: false);
+                if (overlay is null) return (ReceivesPointer: false, Aligned: false, SpansVirtualDesktop: false, Visible: false);
 
                 overlay.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
                 var editor = (AnnotationEditorControl)typeof(PinnedAnnotationOverlayWindow)
@@ -336,14 +336,18 @@ internal static class Program
                 });
                 var overlayHandle = new System.Windows.Interop.WindowInteropHelper(overlay).Handle;
                 NativeMethods.GetWindowRect(overlayHandle, out var overlayPixels);
+                var virtualDesktop = DisplayTopologyService.VirtualBoundsPixels();
+                // Overlay must cover the full virtual desktop (not a single owner monitor)
+                // so mixed-DPI multi-monitor drag does not thrash.
+                var spansVirtual = Math.Abs(overlayPixels.Left - virtualDesktop.Left) <= 2 &&
+                    Math.Abs(overlayPixels.Top - virtualDesktop.Top) <= 2 &&
+                    Math.Abs(overlayPixels.Width - virtualDesktop.Width) <= 4 &&
+                    Math.Abs(overlayPixels.Height - virtualDesktop.Height) <= 4;
                 return (
                     ReceivesPointer: topWindow == overlayHandle,
-                    Aligned: Math.Abs(pinTopLeft.X - surfaceTopLeft.X) < 2 &&
-                        Math.Abs(pinTopLeft.Y - surfaceTopLeft.Y) < 2,
-                    MatchesOwnerMonitor: Math.Abs(overlayPixels.Left - targetScreen.Left) <= 1 &&
-                        Math.Abs(overlayPixels.Top - targetScreen.Top) <= 1 &&
-                        Math.Abs(overlayPixels.Width - targetScreen.Width) <= 1 &&
-                        Math.Abs(overlayPixels.Height - targetScreen.Height) <= 1,
+                    Aligned: Math.Abs(pinTopLeft.X - surfaceTopLeft.X) < 4 &&
+                        Math.Abs(pinTopLeft.Y - surfaceTopLeft.Y) < 4,
+                    SpansVirtualDesktop: spansVirtual,
                     Visible: editor.Opacity > 0.99);
             }
             finally
@@ -352,8 +356,8 @@ internal static class Program
                 pin.Close();
             }
         });
-        Console.WriteLine($"PIN TOOLBAR LIVE: pointer={livePinOverlay.ReceivesPointer}, aligned={livePinOverlay.Aligned}, monitor={livePinOverlay.MatchesOwnerMonitor}, visible={livePinOverlay.Visible}");
-        if (!livePinOverlay.ReceivesPointer || !livePinOverlay.Aligned || !livePinOverlay.MatchesOwnerMonitor || !livePinOverlay.Visible) return 83;
+        Console.WriteLine($"PIN TOOLBAR LIVE: pointer={livePinOverlay.ReceivesPointer}, aligned={livePinOverlay.Aligned}, virtual={livePinOverlay.SpansVirtualDesktop}, visible={livePinOverlay.Visible}");
+        if (!livePinOverlay.ReceivesPointer || !livePinOverlay.Aligned || !livePinOverlay.SpansVirtualDesktop || !livePinOverlay.Visible) return 83;
 
         var mixedDpiOverlayBounds = PinnedAnnotationOverlayWindow.PhysicalBoundsToOverlay(
             new NativeMethods.NativeRect { Left = 1920, Top = 120, Right = 2560, Bottom = 480 },
@@ -364,7 +368,7 @@ internal static class Program
             Math.Abs(mixedDpiOverlayBounds.Y - 80) > 0.01 ||
             Math.Abs(mixedDpiOverlayBounds.Width - 426.6667) > 0.01 ||
             Math.Abs(mixedDpiOverlayBounds.Height - 240) > 0.01) return 83;
-        Console.WriteLine("PIN TOOLBAR: owner-monitor-scoped mixed-DPI placement, move-first tool state, toggle-off tools and lossless editing verified");
+        Console.WriteLine("PIN TOOLBAR: virtual-desktop overlay mixed-DPI placement, move-first tool state, toggle-off tools and lossless editing verified");
 
         var dashboardPaletteMatches = RunSta(() =>
         {

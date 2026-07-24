@@ -19,6 +19,9 @@ public partial class CaptureOverlayWindow
         var height = ActionBar.DesiredSize.Height;
         var placement = OverlayLayoutService.PlaceBelowAndKeepVisible(
             _selection, new Size(width, height), new Size(ActualWidth, ActualHeight));
+        // Keep the bar fully on one physical monitor so mixed-DPI seams do not
+        // split the toolbar across laptop + external (unclickable half-bars).
+        placement = ClampToolbarToSingleMonitor(placement, new Size(width, height), _selection);
         Canvas.SetLeft(ActionBar, placement.X);
         var reservedHeight = _annotationMode
             ? 90
@@ -31,6 +34,34 @@ public partial class CaptureOverlayWindow
             var propertyTop = Canvas.GetTop(ActionBar) + Math.Max(1, height) + 2;
             CaptureInlineEditor.UpdateCaptureToolbarPosition(Canvas.GetLeft(ActionBar), propertyTop);
         }
+    }
+
+    /// <summary>
+    /// Converts a logical overlay placement to physical pixels, clamps the panel
+    /// onto one monitor that best covers the selection, then maps back.
+    /// </summary>
+    private Point ClampToolbarToSingleMonitor(Point logicalTopLeft, Size logicalSize, Rect selectionLogical)
+    {
+        var topLeft = OverlayToScreen(logicalTopLeft);
+        var bottomRight = OverlayToScreen(new Point(
+            logicalTopLeft.X + Math.Max(1, logicalSize.Width),
+            logicalTopLeft.Y + Math.Max(1, logicalSize.Height)));
+        var panelPhysical = new System.Drawing.Rectangle(
+            (int)Math.Round(Math.Min(topLeft.X, bottomRight.X)),
+            (int)Math.Round(Math.Min(topLeft.Y, bottomRight.Y)),
+            Math.Max(1, (int)Math.Round(Math.Abs(bottomRight.X - topLeft.X))),
+            Math.Max(1, (int)Math.Round(Math.Abs(bottomRight.Y - topLeft.Y))));
+
+        var selTopLeft = OverlayToScreen(selectionLogical.TopLeft);
+        var selBottomRight = OverlayToScreen(selectionLogical.BottomRight);
+        var selectionPhysical = new System.Drawing.Rectangle(
+            (int)Math.Round(Math.Min(selTopLeft.X, selBottomRight.X)),
+            (int)Math.Round(Math.Min(selTopLeft.Y, selBottomRight.Y)),
+            Math.Max(1, (int)Math.Round(Math.Abs(selBottomRight.X - selTopLeft.X))),
+            Math.Max(1, (int)Math.Round(Math.Abs(selBottomRight.Y - selTopLeft.Y))));
+
+        var clamped = DisplayTopologyService.ClampPanelToSingleMonitor(panelPhysical, selectionPhysical);
+        return ScreenToOverlay(new Point(clamped.Left, clamped.Top));
     }
 
     private Rect ActionBarBounds()

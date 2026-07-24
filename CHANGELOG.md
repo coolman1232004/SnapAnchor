@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.26] - 2026-07-24
+
+- **Mixed-DPI dual-monitor pin toolbar:** overlay spans the full virtual desktop (no per-monitor thrash when dragging between laptop and external)
+- Pin drag with **Show toolbar** uses physical HWND moves instead of WPF Left/Top DPI conversion
+- **Double-click** on the pin image still closes the pin while the annotation toolbar is open
+- Capture / pin toolbars **clamp to a single physical monitor** so bars no longer split across vertical multi-monitor seams
+
 ## [2.1.25] - 2026-07-24
 
 - **P0/P1 polish:** properties toolbar matches primary chrome; capture toolbar sits snug under the selection

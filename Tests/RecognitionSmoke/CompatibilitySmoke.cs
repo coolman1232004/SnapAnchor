@@ -68,6 +68,17 @@ internal static class CompatibilitySmoke
         if (dual.Left != 0 || dual.Top != -200 || dual.Width != 4480 || dual.Height != 1440)
             throw new InvalidOperationException($"Multi-monitor union bounds unexpected: {dual}");
 
+        // Toolbar clamp: a panel straddling a vertical dual-monitor seam must land fully on one display.
+        var laptop = new System.Drawing.Rectangle(0, 0, 1920, 1200);
+        var external = new System.Drawing.Rectangle(0, -1080, 1920, 1080);
+        var straddlePanel = new System.Drawing.Rectangle(100, -40, 600, 80);
+        var selectionOnLaptop = new System.Drawing.Rectangle(200, 100, 400, 300);
+        var clamped = DisplayTopologyService.ClampPanelToSingleMonitor(
+            straddlePanel, selectionOnLaptop, [laptop, external], useWorkingArea: false);
+        if (clamped.Top < laptop.Top || clamped.Bottom > laptop.Bottom ||
+            clamped.Left < laptop.Left || clamped.Right > laptop.Right)
+            throw new InvalidOperationException($"Toolbar clamp left the selection monitor: {clamped}");
+
         var devices = new[]
         {
             new RecordingDeviceOption(string.Empty, "System default"),

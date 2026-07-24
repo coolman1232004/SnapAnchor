@@ -13,12 +13,15 @@ namespace SnapAnchor.Windows;
 /// <summary>
 /// A transparent, virtual-desktop overlay that keeps the original pin visible
 /// while hosting the same annotation toolbar used by region capture.
+/// Spans the full physical virtual desktop so mixed-DPI multi-monitor drag
+/// does not thrash between single-monitor windows.
 /// </summary>
 internal sealed class PinnedAnnotationOverlayWindow : Window
 {
     private readonly AnnotationEditorControl _editor;
-    private readonly DispatcherTimer _placementTimer = new() { Interval = TimeSpan.FromMilliseconds(40) };
+    private readonly DispatcherTimer _placementTimer = new() { Interval = TimeSpan.FromMilliseconds(50) };
     private int _placementPasses;
+    private bool _draggingPin;
 
     internal event Action<AnnotationAppliedEventArgs>? Applied;
     internal event Action<AnnotationAppliedEventArgs>? DocumentStored;
@@ -36,11 +39,16 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
         AllowsTransparency = true;
         Background = Brushes.Transparent;
         WindowStartupLocation = WindowStartupLocation.Manual;
+        // Logical seed; physical span is applied in SourceInitialized.
         Left = SystemParameters.VirtualScreenLeft;
         Top = SystemParameters.VirtualScreenTop;
         Width = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
-        SourceInitialized += (_, _) => BeginPlacementStabilization();
+        SourceInitialized += (_, _) =>
+        {
+            FitToVirtualDesktopPixels();
+            BeginPlacementStabilization();
+        };
         PreviewMouseWheel += Overlay_PreviewMouseWheel;
 
         _editor = new AnnotationEditorControl();
@@ -70,16 +78,28 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
         _editor.ExternalSurfaceMoved += requestedDelta =>
         {
             if (Owner is not PinnedImageWindow pin) return;
-            var ownerDelta = ConvertDelta(requestedDelta, VisualTreeHelper.GetDpi(this), VisualTreeHelper.GetDpi(pin));
-            var actualOwnerDelta = pin.MoveFromAnnotationOverlay(ownerDelta);
-            var overlayDelta = ConvertDelta(actualOwnerDelta, VisualTreeHelper.GetDpi(pin), VisualTreeHelper.GetDpi(this));
-            _editor.TranslateCaptureOverlay(overlayDelta);
+            _draggingPin = true;
+            // Move the pin in physical pixels (mixed-DPI safe). Overlay surface
+            // is re-aligned from HWND rects after the move — no dual-DPI vector math.
+            pin.MoveFromAnnotationOverlayPhysical(requestedDelta, VisualTreeHelper.GetDpi(this));
+            AlignEditorToOwnerPin(resetToolbar: false);
         };
         _editor.ExternalSurfaceMoveCompleted += () =>
         {
             if (Owner is not PinnedImageWindow pin) return;
             pin.CompleteAnnotationOverlayMove();
+            _draggingPin = false;
             BeginPlacementStabilization();
+        };
+        _editor.ExternalSurfaceDoubleClicked += () =>
+        {
+            // Match bare-pin double-click close when the toolbar is open.
+            if (Owner is PinnedImageWindow pin)
+            {
+                pin.Close();
+                return;
+            }
+            Close();
         };
 
         _editor.Applied += document =>
@@ -90,14 +110,23 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
         _editor.DocumentStored += document => DocumentStored?.Invoke(document);
         _editor.Cancelled += (_, _) => Close();
         _placementTimer.Tick += PlacementTimer_Tick;
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(BeginPlacementStabilization, DispatcherPriority.Render);
+        DpiChanged += (_, _) =>
+        {
+            if (_draggingPin) return;
+            Dispatcher.BeginInvoke(BeginPlacementStabilization, DispatcherPriority.Render);
+        };
         Loaded += (_, _) => Dispatcher.BeginInvoke(() =>
         {
+            FitToVirtualDesktopPixels();
             BeginPlacementStabilization();
             Activate();
             _editor.Focus();
         }, DispatcherPriority.ContextIdle);
-        ContentRendered += (_, _) => Dispatcher.BeginInvoke(BeginPlacementStabilization, DispatcherPriority.ContextIdle);
+        ContentRendered += (_, _) =>
+        {
+            if (!_draggingPin)
+                Dispatcher.BeginInvoke(BeginPlacementStabilization, DispatcherPriority.ContextIdle);
+        };
         Closed += (_, _) => _placementTimer.Stop();
     }
 
@@ -116,50 +145,77 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
             return;
 
         pin.HandleAnnotationOverlayWheel(e.Delta, Keyboard.Modifiers);
-        BeginPlacementStabilization();
+        AlignEditorToOwnerPin(resetToolbar: false);
         e.Handled = true;
     }
 
     private void BeginPlacementStabilization()
     {
-        _placementPasses = 12;
-        FitToOwnerMonitorPixels();
-        AlignEditorToOwnerPin();
+        _placementPasses = 8;
+        FitToVirtualDesktopPixels();
+        AlignEditorToOwnerPin(resetToolbar: true);
         _placementTimer.Start();
     }
 
     private void PlacementTimer_Tick(object? sender, EventArgs e)
     {
-        FitToOwnerMonitorPixels();
-        AlignEditorToOwnerPin();
+        if (_draggingPin)
+        {
+            AlignEditorToOwnerPin(resetToolbar: false);
+            return;
+        }
+
+        FitToVirtualDesktopPixels();
+        AlignEditorToOwnerPin(resetToolbar: true);
         _placementPasses--;
         if (_placementPasses > 0) return;
         _placementTimer.Stop();
     }
 
-    private void AlignEditorToOwnerPin()
+    private void AlignEditorToOwnerPin(bool resetToolbar)
     {
         if (Owner is not PinnedImageWindow pin) return;
         var overlayHandle = new WindowInteropHelper(this).Handle;
         var pinHandle = new WindowInteropHelper(pin).Handle;
         if (overlayHandle == IntPtr.Zero || pinHandle == IntPtr.Zero ||
             !NativeMethods.GetWindowRect(overlayHandle, out var overlayPixels) ||
-            !NativeMethods.GetWindowRect(pinHandle, out var pinPixels)) return;
+            !NativeMethods.GetWindowRect(pinHandle, out var pinPixels) ||
+            overlayPixels.Width < 1 || overlayPixels.Height < 1) return;
 
-        var dpi = DpiLayoutService.WindowScale(this);
-        var actualPinBounds = DpiLayoutService.PhysicalBoundsToLogical(this, pinPixels, overlayPixels);
+        // Map pin physical rect into overlay client space via linear HWND mapping
+        // (same approach as capture multi-monitor detection).
+        var logicalPin = new Rect(
+            (pinPixels.Left - overlayPixels.Left) * (ActualWidth > 1 ? ActualWidth : Width) / overlayPixels.Width,
+            (pinPixels.Top - overlayPixels.Top) * (ActualHeight > 1 ? ActualHeight : Height) / overlayPixels.Height,
+            Math.Max(1, pinPixels.Width * (ActualWidth > 1 ? ActualWidth : Width) / (double)overlayPixels.Width),
+            Math.Max(1, pinPixels.Height * (ActualHeight > 1 ? ActualHeight : Height) / (double)overlayPixels.Height));
+
         var overlayViewport = new Size(
-            Math.Max(1, overlayPixels.Width / Math.Max(0.1, dpi.DpiScaleX)),
-            Math.Max(1, overlayPixels.Height / Math.Max(0.1, dpi.DpiScaleY)));
+            Math.Max(1, ActualWidth > 1 ? ActualWidth : Width),
+            Math.Max(1, ActualHeight > 1 ? ActualHeight : Height));
 
         _editor.UpdateCaptureOverlayBounds(
-            actualPinBounds,
+            logicalPin,
             overlayViewport,
-            actualPinBounds,
-            resetToolbarPosition: true);
-        if (_placementPasses <= 10) _editor.Opacity = 1;
+            logicalPin,
+            resetToolbarPosition: resetToolbar);
+        if (_placementPasses <= 6 || _editor.Opacity < 1) _editor.Opacity = 1;
     }
 
+    /// <summary>
+    /// Cover the full physical virtual desktop — never a single owner monitor —
+    /// so dragging a pin between mixed-DPI displays does not resize/recreate the overlay.
+    /// </summary>
+    private void FitToVirtualDesktopPixels()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return;
+        var bounds = DisplayTopologyService.VirtualBoundsPixels();
+        NativeMethods.SetWindowPos(handle, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height,
+            NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);
+    }
+
+    /// <summary>Maps a physical pin rect into overlay client space (uniform scale).</summary>
     internal static Rect PhysicalBoundsToOverlay(
         NativeMethods.NativeRect target,
         NativeMethods.NativeRect overlay,
@@ -173,22 +229,5 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
             (target.Top - overlay.Top) / scaleY,
             Math.Max(1, target.Width / scaleX),
             Math.Max(1, target.Height / scaleY));
-    }
-
-    private static Vector ConvertDelta(Vector delta, DpiScale from, DpiScale to)
-        => new(
-            delta.X * from.DpiScaleX / Math.Max(0.1, to.DpiScaleX),
-            delta.Y * from.DpiScaleY / Math.Max(0.1, to.DpiScaleY));
-
-    private void FitToOwnerMonitorPixels()
-    {
-        var handle = new WindowInteropHelper(this).Handle;
-        if (handle == IntPtr.Zero) return;
-        var ownerHandle = Owner is null ? IntPtr.Zero : new WindowInteropHelper(Owner).Handle;
-        var bounds = ownerHandle == IntPtr.Zero
-            ? DisplayTopologyService.VirtualBoundsPixels()
-            : DisplayTopologyService.MonitorBoundsForWindowPixels(ownerHandle);
-        NativeMethods.SetWindowPos(handle, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height,
-            NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);
     }
 }
