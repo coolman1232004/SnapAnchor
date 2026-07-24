@@ -1,6 +1,6 @@
 param(
     [string]$DistDirectory = 'dist',
-    [string]$Version = '2.1.12',
+    [string]$Version = '2.1.14',
     [string]$CertificateThumbprint = $env:SNAPANCHOR_CERT_THUMBPRINT
 )
 
@@ -107,7 +107,7 @@ $manifest = [ordered]@{
     signed = -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)
     downloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Setup-win-x64.exe'
     portableDownloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Portable-win-x64.zip'
-    releaseNotes = 'SnapAnchor 2.1.12 restores automatic window and UI-element outlines independently of the capture-dimensions setting. Pinned-image OCR text selection remains off by default, and its right-click toggle now persists as the default for future pins.'
+    releaseNotes = 'SnapAnchor 2.1.14 lets you annotate inside rectangles again, improves window/UI-element hover detection, and pre-fills fully expanded save filenames. Also includes 2.1.13 toolbar tools (numbered markers, callouts), optional RGB sampler, and tray shortcuts.'
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dist 'release.json') -Encoding UTF8
 
