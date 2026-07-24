@@ -76,8 +76,8 @@
                         <CheckBox x:Name="ShowSizeBox" Content="Show coordinate and size badge above the selection" Margin="0,4" />
                         <CheckBox x:Name="ShowElementDetectionBox" Content="Show automatic window and UI-element detection outline" Margin="0,4" />
                         <CheckBox x:Name="ShowCaptureHintsBox" Content="Show capture shortcut hints" Margin="0,4" />
-                        <CheckBox x:Name="ShowColorSamplerBox" Content="Show RGB colour sampler under the cursor" Margin="0,4"
-                                  ToolTip="Displays the colour under the pointer while capturing. Off by default to keep pointer movement light."/>
+                        <CheckBox x:Name="EnableColorMagnifierBox" Content="Enable colour picker / magnifier" Margin="0,4"
+                                  ToolTip="Shows a pixel-perfect magnifier near the cursor while capturing. Press C to copy the colour, Shift to switch RGB/HEX."/>
                         <CheckBox x:Name="HdrColorCorrectionBox" Content="Correct washed-out colours on HDR displays" Margin="0,4"
                                   ToolTip="Applies a conservative local tone correction only when Windows reports that HDR is active."/>
                     </StackPanel>
@@ -268,7 +268,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="165"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="Capture" VerticalAlignment="Center" Margin="0,8"/><ComboBox x:Name="CaptureHotkeyBox" Grid.Column="1" Height="34" Margin="0,6" DisplayMemberPath="DisplayName" SelectedValuePath="Name"/>
                     <TextBlock Grid.Row="1" Text="Capture and copy" VerticalAlignment="Center" Margin="0,8"/><ComboBox x:Name="CopyHotkeyBox" Grid.Row="1" Grid.Column="1" Height="34" Margin="0,6" DisplayMemberPath="DisplayName" SelectedValuePath="Name"/>
@@ -277,19 +277,20 @@
                     <TextBlock Grid.Row="4" Text="Pin clipboard" VerticalAlignment="Center" Margin="0,8"/><ComboBox x:Name="PasteHotkeyBox" Grid.Row="4" Grid.Column="1" Height="34" Margin="0,6" DisplayMemberPath="DisplayName" SelectedValuePath="Name"/>
                     <TextBlock Grid.Row="5" Text="Hide/show all pins" VerticalAlignment="Center" Margin="0,8"/><ComboBox x:Name="TogglePinsHotkeyBox" Grid.Row="5" Grid.Column="1" Height="34" Margin="0,6" DisplayMemberPath="DisplayName" SelectedValuePath="Name"/>
                     <TextBlock Grid.Row="6" Text="Record region" VerticalAlignment="Center" Margin="0,8"/><ComboBox x:Name="RecordingHotkeyBox" Grid.Row="6" Grid.Column="1" Height="34" Margin="0,6" DisplayMemberPath="DisplayName" SelectedValuePath="Name"/>
-                    <Separator Grid.Row="7" Grid.ColumnSpan="2" Margin="0,10,0,8"/>
-                    <TextBlock Grid.Row="8" Text="Ignore shortcuts in app" VerticalAlignment="Center" Margin="0,8"/>
-                    <DockPanel Grid.Row="8" Grid.Column="1" Margin="0,4">
+                    <TextBlock Grid.Row="7" Text="Colour picker" VerticalAlignment="Center" Margin="0,8"/><ComboBox x:Name="ColorMagnifierHotkeyBox" Grid.Row="7" Grid.Column="1" Height="34" Margin="0,6" DisplayMemberPath="DisplayName" SelectedValuePath="Name"/>
+                    <Separator Grid.Row="8" Grid.ColumnSpan="2" Margin="0,10,0,8"/>
+                    <TextBlock Grid.Row="9" Text="Ignore shortcuts in app" VerticalAlignment="Center" Margin="0,8"/>
+                    <DockPanel Grid.Row="9" Grid.Column="1" Margin="0,4">
                         <Button DockPanel.Dock="Right" Content="Add" Click="AddHotkeyExcludedApp_Click" Style="{StaticResource AccentDialogButton}" Margin="8,0,0,0" Padding="13,5"/>
                         <ComboBox x:Name="HotkeyRunningAppsBox" Height="32" DisplayMemberPath="DisplayName" SelectedValuePath="ProcessName"/>
                     </DockPanel>
-                    <TextBlock Grid.Row="9" Text="Excluded apps" VerticalAlignment="Top" Margin="0,10"/>
-                    <Grid Grid.Row="9" Grid.Column="1" Margin="0,4">
+                    <TextBlock Grid.Row="10" Text="Excluded apps" VerticalAlignment="Top" Margin="0,10"/>
+                    <Grid Grid.Row="10" Grid.Column="1" Margin="0,4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <ListBox x:Name="HotkeyExcludedAppsList" Height="74"/>
                         <Button Grid.Column="1" Content="Remove" Click="RemoveHotkeyExcludedApp_Click" Style="{StaticResource DialogButton}" Margin="8,0,0,0" Padding="11,5" VerticalAlignment="Top"/>
                     </Grid>
-                    <TextBlock Grid.Row="10" Grid.ColumnSpan="2" Text="The emergency Alt+Shift+P shortcut always remains available so click-through pins can be recovered." Foreground="#57534E" TextWrapping="Wrap" Margin="0,8,0,4"/>
+                    <TextBlock Grid.Row="11" Grid.ColumnSpan="2" Text="The emergency Alt+Shift+P shortcut always remains available so click-through pins can be recovered." Foreground="#57534E" TextWrapping="Wrap" Margin="0,8,0,4"/>
                 </Grid>
                 </ScrollViewer>
             </TabItem>

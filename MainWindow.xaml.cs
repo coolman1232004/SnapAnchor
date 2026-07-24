@@ -20,6 +20,7 @@ public partial class MainWindow : Window
     private const int CustomCaptureHotKeyId = 1006;
     private const int RecordingHotKeyId = 1007;
     private const int DrawingHotKeyId = 1008;
+    private const int ColorMagnifierHotKeyId = 1009;
 
     private HwndSource? _source;
     private Forms.NotifyIcon? _trayIcon;
@@ -34,6 +35,7 @@ public partial class MainWindow : Window
     private HotkeyDefinition _customCaptureHotkey;
     private HotkeyDefinition _recordingHotkey;
     private HotkeyDefinition _drawingHotkey;
+    private HotkeyDefinition _colorMagnifierHotkey;
     private readonly DispatcherTimer _sessionTimer;
     private readonly DispatcherTimer _desktopTimer;
     private bool _refreshingPinManager;
@@ -93,6 +95,7 @@ public partial class MainWindow : Window
             case CustomCaptureHotKeyId: OpenCustomCapture(); break;
             case RecordingHotKeyId: StartCapture(CaptureCompletionMode.RecordOnSelection); break;
             case DrawingHotKeyId: StartCapture(CaptureCompletionMode.FullScreenDraw); break;
+            case ColorMagnifierHotKeyId: StartCapture(CaptureCompletionMode.ColorPicker); break;
         }
         return IntPtr.Zero;
     }
@@ -111,6 +114,7 @@ public partial class MainWindow : Window
         success &= Register(handle, CustomCaptureHotKeyId, _customCaptureHotkey);
         success &= Register(handle, RecordingHotKeyId, _recordingHotkey);
         success &= Register(handle, DrawingHotKeyId, _drawingHotkey);
+        success &= Register(handle, ColorMagnifierHotKeyId, _colorMagnifierHotkey);
         success &= NativeMethods.RegisterHotKey(handle, RestoreHotKeyId,
             NativeMethods.ModAlt | NativeMethods.ModShift | NativeMethods.ModNoRepeat, 0x50);
         return success;
@@ -124,7 +128,7 @@ public partial class MainWindow : Window
     {
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return;
-        foreach (var id in new[] { CaptureHotKeyId, PinHotKeyId, RestoreHotKeyId, CaptureAndCopyHotKeyId, TogglePinsHotKeyId, CustomCaptureHotKeyId, RecordingHotKeyId, DrawingHotKeyId })
+        foreach (var id in new[] { CaptureHotKeyId, PinHotKeyId, RestoreHotKeyId, CaptureAndCopyHotKeyId, TogglePinsHotKeyId, CustomCaptureHotKeyId, RecordingHotKeyId, DrawingHotKeyId, ColorMagnifierHotKeyId })
             NativeMethods.UnregisterHotKey(handle, id);
     }
 
@@ -145,6 +149,7 @@ public partial class MainWindow : Window
         _customCaptureHotkey = HotkeyOptions.Get(_settings.CustomCaptureHotkey);
         _recordingHotkey = HotkeyOptions.Get(_settings.RecordingHotkey);
         _drawingHotkey = HotkeyOptions.Get(_settings.DrawingHotkey);
+        _colorMagnifierHotkey = HotkeyOptions.Get(_settings.ColorMagnifierHotkey);
     }
 
     private void RefreshDashboard()
@@ -394,6 +399,7 @@ public partial class MainWindow : Window
             case AppCommandKind.Settings: OpenPreferences(); break;
             case AppCommandKind.Whiteboard: OpenWhiteboard(transparent: false); break;
             case AppCommandKind.TransparentWhiteboard: OpenWhiteboard(transparent: true); break;
+            case AppCommandKind.ColorPicker: _ = BeginCommandCaptureAsync(CaptureCompletionMode.ColorPicker, options); break;
             case AppCommandKind.Exit: ExitApplication(); break;
         }
     }
@@ -557,6 +563,7 @@ public partial class MainWindow : Window
         menu.Items.Add($"{L("Capture and copy")} ({_captureAndCopyHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.CopyOnSelection)));
         menu.Items.Add($"{L("Custom capture")} ({_customCaptureHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(OpenCustomCapture));
         menu.Items.Add($"{L("Record region")} ({_recordingHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.RecordOnSelection)));
+        menu.Items.Add($"{L("Colour picker")} ({_colorMagnifierHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.ColorPicker)));
         menu.Items.Add(L("Capture active window"), null, (_, _) => Dispatcher.Invoke(CaptureActiveWindow));
         menu.Items.Add(L("Capture full screen"), null, (_, _) => Dispatcher.Invoke(CaptureFullScreen));
         menu.Items.Add($"{L("Pin clipboard")} ({_pasteHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(PinClipboard));

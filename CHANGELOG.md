@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.16] - 2026-07-24
+
+- Added a **Snipaste-style colour picker / magnifier** during capture: red-bordered pixel lens, crosshair, coordinates, RGB/HEX value, and copy hints
+- **C** copies the colour under the cursor; **Shift** toggles RGB ↔ HEX (preference remembered)
+- Preferences: **Enable colour picker / magnifier** (default on) and a configurable **Colour picker** global hotkey (default `Ctrl+Shift+C`)
+- Standalone colour-picker mode from the hotkey, tray menu, or `SnapAnchor.exe color`
+- Lens samples the frozen capture bitmap with nearest-neighbor scaling for pixel-perfect, mixed-DPI-safe readout
+
 ## [2.1.15] - 2026-07-24
 
 - Window/UI-element detection now uses a **spotlight mask**: the rest of the capture stays dimmed and only the hovered window or control lights up at full brightness

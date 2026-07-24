@@ -19,7 +19,8 @@ public enum CaptureCompletionMode
     Interactive,
     CopyOnSelection,
     RecordOnSelection,
-    FullScreenDraw
+    FullScreenDraw,
+    ColorPicker
 }
 
 public partial class CaptureOverlayWindow : Window
@@ -76,6 +77,9 @@ public partial class CaptureOverlayWindow : Window
     private Int32Rect _annotationResizePixelRegion;
     private readonly IReadOnlyList<CaptureRegion> _regionHistory;
     private int _regionHistoryIndex = -1;
+    private readonly ColorMagnifierControl _colorMagnifier = new();
+    private bool _colorMagnifierUseHex;
+    private bool _colorPickerMode;
 
     public CaptureOverlayWindow(BitmapSource screen, CaptureCompletionMode completionMode = CaptureCompletionMode.Interactive, CaptureOptions? options = null)
     {
@@ -88,6 +92,11 @@ public partial class CaptureOverlayWindow : Window
         ApplyCaptureToolbarConfiguration(_settings.CaptureToolbarOrder, _settings.CaptureToolbarEnabled);
         _completionMode = completionMode;
         _options = options ?? new CaptureOptions();
+        _colorPickerMode = completionMode == CaptureCompletionMode.ColorPicker;
+        _colorMagnifierUseHex = _settings.ColorMagnifierUseHex;
+        _colorMagnifier.SetUseHex(_colorMagnifierUseHex);
+        Panel.SetZIndex(_colorMagnifier, 3700);
+        OverlayCanvas.Children.Add(_colorMagnifier);
         ScreenImage.Source = screen;
         CaptureInlineEditor.Applied += ApplyCaptureAnnotation;
         CaptureInlineEditor.DocumentStored += StoreCaptureAnnotation;
@@ -121,6 +130,14 @@ public partial class CaptureOverlayWindow : Window
             Focus();
             if (_completionMode == CaptureCompletionMode.FullScreenDraw)
                 Dispatcher.BeginInvoke(InitializeFullScreenDrawing);
+            if (_colorPickerMode)
+                Dispatcher.BeginInvoke(() =>
+                {
+                    ShortcutHints.Visibility = Visibility.Collapsed;
+                    ActionBar.Visibility = Visibility.Collapsed;
+                    ClearDetectionHighlight();
+                    UpdateColorMagnifier(Mouse.GetPosition(OverlayCanvas));
+                });
         };
         Closed += (_, _) =>
         {
@@ -180,6 +197,13 @@ public partial class CaptureOverlayWindow : Window
             e.Handled = true;
             return;
         }
+        if (_colorPickerMode)
+        {
+            UpdateColorMagnifier(e.GetPosition(OverlayCanvas));
+            _colorMagnifier.TryCopyColor();
+            e.Handled = true;
+            return;
+        }
         if (_recordingRunning || ActionBar.IsMouseOver || OcrPanel.IsMouseOver || RecordingBar.IsMouseOver || RecordingReviewPanel.IsMouseOver || e.OriginalSource is System.Windows.Controls.Button) return;
         _ocrCancellation?.Cancel();
         OcrPanel.Visibility = Visibility.Collapsed;
@@ -217,7 +241,9 @@ public partial class CaptureOverlayWindow : Window
             CrossVertical.Y2 = ActualHeight;
             CrossVertical.X1 = CrossVertical.X2 = point.X;
         }
-        UpdateColorSampler(point);
+        UpdateColorMagnifier(point);
+        if (_colorPickerMode)
+            return;
         if (_resizing)
             UpdateResize(point);
         else if (_dragging)
@@ -232,36 +258,39 @@ public partial class CaptureOverlayWindow : Window
         }
     }
 
-    private void UpdateColorSampler(Point overlayPoint)
+    private bool ColorMagnifierEnabled =>
+        _settings.EnableColorMagnifier || _colorPickerMode;
+
+    private void UpdateColorMagnifier(Point overlayPoint)
     {
-        if (!_settings.ShowColorSampler || _annotationMode || _recordingRunning || _ocrAreaSelectionMode)
+        if (!ColorMagnifierEnabled || _annotationMode || _recordingRunning || _ocrAreaSelectionMode)
         {
-            ColorSampleBadge.Visibility = Visibility.Collapsed;
+            _colorMagnifier.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var pixelX = Math.Clamp((int)Math.Floor(overlayPoint.X * _screen.PixelWidth / Math.Max(1.0, ActualWidth)), 0, _screen.PixelWidth - 1);
-        var pixelY = Math.Clamp((int)Math.Floor(overlayPoint.Y * _screen.PixelHeight / Math.Max(1.0, ActualHeight)), 0, _screen.PixelHeight - 1);
-        try
-        {
-            var cropped = new CroppedBitmap(_screen, new Int32Rect(pixelX, pixelY, 1, 1));
-            var pixels = new byte[4];
-            cropped.CopyPixels(pixels, 4, 0);
-            // BGRA from the frozen capture surface.
-            var color = Color.FromArgb(pixels[3], pixels[2], pixels[1], pixels[0]);
-            ColorSampleSwatch.Background = new SolidColorBrush(color);
-            ColorSampleText.Text = $"#{color.R:X2}{color.G:X2}{color.B:X2}  RGB({color.R}, {color.G}, {color.B})";
-            ColorSampleBadge.Visibility = Visibility.Visible;
-            ColorSampleBadge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var left = Math.Clamp(overlayPoint.X + 18, 8, Math.Max(8, ActualWidth - ColorSampleBadge.DesiredSize.Width - 8));
-            var top = Math.Clamp(overlayPoint.Y + 18, 8, Math.Max(8, ActualHeight - ColorSampleBadge.DesiredSize.Height - 8));
-            Canvas.SetLeft(ColorSampleBadge, left);
-            Canvas.SetTop(ColorSampleBadge, top);
-        }
-        catch
-        {
-            ColorSampleBadge.Visibility = Visibility.Collapsed;
-        }
+        _colorMagnifier.UpdateFromCapture(_screen, overlayPoint, ActualWidth, ActualHeight);
+        _colorMagnifier.Visibility = Visibility.Visible;
+        _colorMagnifier.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var size = _colorMagnifier.DesiredSize;
+        // Keep the lens near the cursor without covering the sampled pixel.
+        var left = overlayPoint.X + 22;
+        var top = overlayPoint.Y + 22;
+        if (left + size.Width > ActualWidth - 8)
+            left = overlayPoint.X - size.Width - 16;
+        if (top + size.Height > ActualHeight - 8)
+            top = overlayPoint.Y - size.Height - 16;
+        left = Math.Clamp(left, 8, Math.Max(8, ActualWidth - size.Width - 8));
+        top = Math.Clamp(top, 8, Math.Max(8, ActualHeight - size.Height - 8));
+        Canvas.SetLeft(_colorMagnifier, left);
+        Canvas.SetTop(_colorMagnifier, top);
+    }
+
+    private void PersistColorMagnifierFormat()
+    {
+        if (_settings.ColorMagnifierUseHex == _colorMagnifierUseHex) return;
+        _settings.ColorMagnifierUseHex = _colorMagnifierUseHex;
+        try { SettingsService.Save(_settings); } catch { /* non-fatal */ }
     }
 
     private void Window_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -1092,10 +1121,29 @@ public partial class CaptureOverlayWindow : Window
             e.Handled = true;
             return;
         }
+        if (e.Key is Key.LeftShift or Key.RightShift)
+        {
+            if (ColorMagnifierEnabled && _colorMagnifier.Visibility == Visibility.Visible &&
+                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) == 0)
+            {
+                _colorMagnifier.ToggleFormat();
+                _colorMagnifierUseHex = _colorMagnifier.UseHexFormat;
+                PersistColorMagnifierFormat();
+                e.Handled = true;
+                return;
+            }
+        }
         if (e.Key == Key.C)
         {
             if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
-                _ = RunCaptureOcrAsync(true);
+            {
+                if (!_colorPickerMode)
+                    _ = RunCaptureOcrAsync(true);
+            }
+            else if (ColorMagnifierEnabled && _colorMagnifier.Visibility == Visibility.Visible)
+            {
+                _colorMagnifier.TryCopyColor();
+            }
             e.Handled = true;
             return;
         }
@@ -1165,9 +1213,10 @@ public partial class CaptureOverlayWindow : Window
         SelectionRect.Visibility = Visibility.Collapsed;
         SelectionHandles.Visibility = Visibility.Collapsed;
         SizeBadge.Visibility = Visibility.Collapsed;
-        ColorSampleBadge.Visibility = Visibility.Collapsed;
         ActionBar.Visibility = Visibility.Collapsed;
         ClearDetectionHighlight();
+        if (!_colorPickerMode)
+            _colorMagnifier.Visibility = Visibility.Collapsed;
     }
 
     private static string L(string value) => LocalizationService.Current(value);

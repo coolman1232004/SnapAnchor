@@ -1482,4 +1482,16 @@
   <data name="Capture full screen" xml:space="preserve"><value>擷取全螢幕</value></data>
   <data name="Whiteboard" xml:space="preserve"><value>白板</value></data>
   <data name="Transparent whiteboard" xml:space="preserve"><value>透明白板</value></data>
+  <data name="Enable colour picker / magnifier" xml:space="preserve"><value>啟用取色器 / 放大鏡</value></data>
+  <data name="Shows a pixel-perfect magnifier near the cursor while capturing. Press C to copy the colour, Shift to switch RGB/HEX." xml:space="preserve"><value>截圖時在游標旁顯示像素級放大鏡。按 C 複製顏色，按 Shift 切換 RGB/HEX。</value></data>
+  <data name="Colour picker" xml:space="preserve"><value>取色器</value></data>
+  <data name="Press C to copy colour" xml:space="preserve"><value>按 C 複製顏色</value></data>
+  <data name="Press Shift to switch RGB / HEX" xml:space="preserve"><value>按 Shift 切換 RGB / HEX</value></data>
+  <data name="HEX format" xml:space="preserve"><value>HEX 格式</value></data>
+  <data name="RGB format" xml:space="preserve"><value>RGB 格式</value></data>
+  <data name="Copied {0}" xml:space="preserve"><value>已複製 {0}</value></data>
+  <data name="Could not copy colour" xml:space="preserve"><value>無法複製顏色</value></data>
+  <data name="X {0}   Y {1}" xml:space="preserve"><value>X {0}   Y {1}</value></data>
+  <data name="C                        Copy colour under cursor" xml:space="preserve"><value>C                        複製游標下的顏色</value></data>
+  <data name="Shift                   RGB / HEX colour format" xml:space="preserve"><value>Shift                   RGB / HEX 顏色格式</value></data>
 </root>

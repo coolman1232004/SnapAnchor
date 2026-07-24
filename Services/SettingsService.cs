@@ -29,7 +29,11 @@ public sealed class AppSettings
     public bool ShowCaptureSize { get; set; } = true;
     public bool? ShowElementDetection { get; set; } = true;
     public bool ShowCaptureHints { get; set; } = true;
-    public bool ShowColorSampler { get; set; }
+    /// <summary>Legacy name kept for JSON compatibility; prefer <see cref="EnableColorMagnifier"/>.</summary>
+    public bool ShowColorSampler { get; set; } = true;
+    public bool EnableColorMagnifier { get; set; } = true;
+    public string ColorMagnifierHotkey { get; set; } = "CtrlShiftC";
+    public bool ColorMagnifierUseHex { get; set; }
     public bool HasSeenWelcomeTip { get; set; }
     public bool ExcludeSnapAnchorFromCapture { get; set; } = true;
     public List<string> CaptureExcludedProcesses { get; set; } = [];
@@ -284,6 +288,10 @@ internal static class SettingsService
             ? "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss"
             : NormalizeOutputFileNameTemplate(settings.OutputFileName);
         settings.OutputFileName = Path.ChangeExtension(outputStem, outputExtension);
+        // Magnifier is the product feature; keep the legacy JSON flag mirrored.
+        settings.ShowColorSampler = settings.EnableColorMagnifier;
+        if (string.IsNullOrWhiteSpace(settings.ColorMagnifierHotkey))
+            settings.ColorMagnifierHotkey = "CtrlShiftC";
         return settings;
     }
 

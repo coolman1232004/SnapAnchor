@@ -14,9 +14,9 @@
     <AssemblyName>SnapAnchor</AssemblyName>
     <RootNamespace>SnapAnchor</RootNamespace>
     <ApplicationIcon>Assets\SnapAnchor.ico</ApplicationIcon>
-    <Version>2.1.15</Version>
-    <AssemblyVersion>2.1.15.0</AssemblyVersion>
-    <FileVersion>2.1.15.0</FileVersion>
+    <Version>2.1.16</Version>
+    <AssemblyVersion>2.1.16.0</AssemblyVersion>
+    <FileVersion>2.1.16.0</FileVersion>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>

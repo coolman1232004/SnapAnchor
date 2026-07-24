@@ -1482,4 +1482,16 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="Capture full screen" xml:space="preserve"><value>Capture full screen</value></data>
   <data name="Whiteboard" xml:space="preserve"><value>Whiteboard</value></data>
   <data name="Transparent whiteboard" xml:space="preserve"><value>Transparent whiteboard</value></data>
+  <data name="Enable colour picker / magnifier" xml:space="preserve"><value>Enable colour picker / magnifier</value></data>
+  <data name="Shows a pixel-perfect magnifier near the cursor while capturing. Press C to copy the colour, Shift to switch RGB/HEX." xml:space="preserve"><value>Shows a pixel-perfect magnifier near the cursor while capturing. Press C to copy the colour, Shift to switch RGB/HEX.</value></data>
+  <data name="Colour picker" xml:space="preserve"><value>Colour picker</value></data>
+  <data name="Press C to copy colour" xml:space="preserve"><value>Press C to copy colour</value></data>
+  <data name="Press Shift to switch RGB / HEX" xml:space="preserve"><value>Press Shift to switch RGB / HEX</value></data>
+  <data name="HEX format" xml:space="preserve"><value>HEX format</value></data>
+  <data name="RGB format" xml:space="preserve"><value>RGB format</value></data>
+  <data name="Copied {0}" xml:space="preserve"><value>Copied {0}</value></data>
+  <data name="Could not copy colour" xml:space="preserve"><value>Could not copy colour</value></data>
+  <data name="X {0}   Y {1}" xml:space="preserve"><value>X {0}   Y {1}</value></data>
+  <data name="C                        Copy colour under cursor" xml:space="preserve"><value>C                        Copy colour under cursor</value></data>
+  <data name="Shift                   RGB / HEX colour format" xml:space="preserve"><value>Shift                   RGB / HEX colour format</value></data>
 </root>

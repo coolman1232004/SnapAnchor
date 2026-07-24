@@ -49,12 +49,7 @@
             <Border x:Name="SizeBadge" Visibility="Collapsed" Background="#E8212530" CornerRadius="14" Padding="10,5">
                 <TextBlock x:Name="SizeText" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
             </Border>
-            <Border x:Name="ColorSampleBadge" Visibility="Collapsed" Background="#E8212530" CornerRadius="14" Padding="8,5" IsHitTestVisible="False" Panel.ZIndex="3600">
-                <StackPanel Orientation="Horizontal">
-                    <Border x:Name="ColorSampleSwatch" Width="14" Height="14" CornerRadius="3" BorderBrush="White" BorderThickness="1" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="ColorSampleText" Foreground="White" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Border>
+
             <Border x:Name="OcrAreaHint" Visibility="Collapsed" Background="#E8212530" CornerRadius="14" Padding="12,6" Panel.ZIndex="2600" IsHitTestVisible="False">
                 <TextBlock Text="Drag the smaller area to recognize" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
             </Border>
@@ -163,12 +158,14 @@
                 </Grid>
             </Border>
 
-            <Border x:Name="ShortcutHints" Width="330" Background="#F2191D24" CornerRadius="13" Padding="16,13" IsHitTestVisible="False">
+            <Border x:Name="ShortcutHints" Width="360" Background="#F2191D24" CornerRadius="13" Padding="16,13" IsHitTestVisible="False">
                 <StackPanel>
                     <TextBlock Text="Capture shortcuts" Foreground="White" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
                     <TextBlock Text="W / A / S / D     Move cursor precisely" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock x:Name="DetectionWheelHint" Text="Mouse wheel      Parent / child UI element" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock x:Name="DetectionTabHint" Text="Tab                    Window / element mode" Foreground="White" FontSize="13" Margin="0,3"/>
+                    <TextBlock Text="C                        Copy colour under cursor" Foreground="White" FontSize="13" Margin="0,3"/>
+                    <TextBlock Text="Shift                   RGB / HEX colour format" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="Shift + C            Recognize and copy text" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="L                        Long scrolling screenshot" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="R                        Record selected region" Foreground="White" FontSize="13" Margin="0,3"/>

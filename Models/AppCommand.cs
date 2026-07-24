@@ -15,6 +15,7 @@ internal enum AppCommandKind
     Settings,
     Whiteboard,
     TransparentWhiteboard,
+    ColorPicker,
     Exit
 }
 
@@ -60,6 +61,7 @@ internal sealed record AppCommand(
             "settings" or "preferences" => AppCommandKind.Settings,
             "whiteboard" => AppCommandKind.Whiteboard,
             "transparent-whiteboard" => AppCommandKind.TransparentWhiteboard,
+            "color" or "colour" or "color-picker" or "colour-picker" or "picker" => AppCommandKind.ColorPicker,
             "exit" or "quit" => AppCommandKind.Exit,
             _ => (AppCommandKind)(-1)
         };

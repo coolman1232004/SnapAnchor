@@ -23,6 +23,7 @@ public partial class PreferencesWindow : Window
         PasteHotkeyBox.ItemsSource = HotkeyOptions.All;
         TogglePinsHotkeyBox.ItemsSource = HotkeyOptions.All;
         RecordingHotkeyBox.ItemsSource = HotkeyOptions.All;
+        ColorMagnifierHotkeyBox.ItemsSource = HotkeyOptions.All;
         RecordingInputDeviceBox.ItemsSource = AdvancedRecordingSession.InputDevices();
         RecordingOutputDeviceBox.ItemsSource = AdvancedRecordingSession.OutputDevices();
         var runningApps = CaptureExclusionService.RunningApps();
@@ -51,7 +52,7 @@ public partial class PreferencesWindow : Window
         ShowSizeBox.IsChecked = _settings.ShowCaptureSize;
         ShowElementDetectionBox.IsChecked = _settings.ShowElementDetection != false;
         ShowCaptureHintsBox.IsChecked = _settings.ShowCaptureHints;
-        ShowColorSamplerBox.IsChecked = _settings.ShowColorSampler;
+        EnableColorMagnifierBox.IsChecked = _settings.EnableColorMagnifier;
         HdrColorCorrectionBox.IsChecked = _settings.CorrectHdrColors;
         ExcludeSnapAnchorBox.IsChecked = _settings.ExcludeSnapAnchorFromCapture;
         ExcludedAppsList.ItemsSource = _settings.CaptureExcludedProcesses.ToList();
@@ -103,6 +104,8 @@ public partial class PreferencesWindow : Window
         PasteHotkeyBox.SelectedValue = _settings.PasteHotkey;
         TogglePinsHotkeyBox.SelectedValue = _settings.TogglePinsHotkey;
         RecordingHotkeyBox.SelectedValue = _settings.RecordingHotkey;
+        ColorMagnifierHotkeyBox.SelectedValue = _settings.ColorMagnifierHotkey;
+        if (ColorMagnifierHotkeyBox.SelectedIndex < 0) ColorMagnifierHotkeyBox.SelectedValue = "CtrlShiftC";
         OcrLanguageBox.SelectedValue = _settings.OcrLanguage;
         OcrOrientationBox.IsChecked = _settings.OcrDetectOrientation;
         if (OcrLanguageBox.SelectedIndex < 0) OcrLanguageBox.SelectedIndex = 3;
@@ -213,7 +216,8 @@ public partial class PreferencesWindow : Window
         _settings.ShowCaptureSize = ShowSizeBox.IsChecked == true;
         _settings.ShowElementDetection = ShowElementDetectionBox.IsChecked == true;
         _settings.ShowCaptureHints = ShowCaptureHintsBox.IsChecked == true;
-        _settings.ShowColorSampler = ShowColorSamplerBox.IsChecked == true;
+        _settings.EnableColorMagnifier = EnableColorMagnifierBox.IsChecked == true;
+        _settings.ShowColorSampler = _settings.EnableColorMagnifier;
         _settings.CorrectHdrColors = HdrColorCorrectionBox.IsChecked == true;
         _settings.ExcludeSnapAnchorFromCapture = ExcludeSnapAnchorBox.IsChecked == true;
         _settings.CaptureExcludedProcesses = ExcludedAppsList.Items.Cast<string>()
@@ -273,6 +277,7 @@ public partial class PreferencesWindow : Window
         _settings.PasteHotkey = Selected(PasteHotkeyBox, "F3");
         _settings.TogglePinsHotkey = Selected(TogglePinsHotkeyBox, "ShiftF3");
         _settings.RecordingHotkey = Selected(RecordingHotkeyBox, "CtrlShiftR");
+        _settings.ColorMagnifierHotkey = Selected(ColorMagnifierHotkeyBox, "CtrlShiftC");
         _settings.OcrLanguage = OcrLanguageBox.SelectedValue as string ?? "eng+chi_sim+chi_tra";
         _settings.OcrDetectOrientation = OcrOrientationBox.IsChecked == true;
         _settings.ToolbarSizeMode = ToolbarThemeService.Normalize(ToolbarSizeBox.SelectedValue as string);
