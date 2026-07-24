@@ -282,11 +282,11 @@ public partial class CaptureOverlayWindow : Window
             return;
         }
 
-        // Pixel sampling is the second-heaviest hot-path cost; cap refresh rate.
+        // Pixel sampling is expensive; keep it light so detection stays smooth.
         var now = Environment.TickCount64;
-        if (now - _lastMagnifierTick < 24 && _colorMagnifier.Visibility == Visibility.Visible)
+        var minInterval = _settings.ShowElementDetection != false ? 48 : 28;
+        if (now - _lastMagnifierTick < minInterval && _colorMagnifier.Visibility == Visibility.Visible)
         {
-            // Still reposition the existing lens without re-sampling every pixel.
             PlaceColorMagnifier(overlayPoint);
             return;
         }
@@ -471,20 +471,18 @@ public partial class CaptureOverlayWindow : Window
         if (movedLittle && _detectionCandidates.Count > 0 && _detectionClock.ElapsedMilliseconds < 16)
             return;
 
-        // While still inside the currently lit region, avoid re-layout every pixel.
+        // Inside the current lit hole: only re-query occasionally (element refine).
         if (_detectionCandidates.Count > 0 &&
             !_detectedSelection.IsEmpty &&
             _detectedSelection.Contains(overlayPoint) &&
-            _detectionClock.ElapsedMilliseconds < 40 &&
-            !_detectElements)
+            _detectionClock.ElapsedMilliseconds < (_detectElements ? 50 : 80))
             return;
 
         _lastDetectionOverlayPoint = overlayPoint;
         _lastDetectionScreenPoint = screenPoint;
         _detectionClock.Restart();
 
-        // Window mode: pure geometry. Element mode may lazily expand one window
-        // the first time it is hovered (budgeted); subsequent moves stay geometric.
+        // Geometry only on the UI thread. Element trees load on a worker STA.
         _detectionCandidates = ElementDetectionService.DetectHierarchy(screenPoint, _overlayHandle, _detectElements);
         if (_detectionCandidates.Count == 0)
         {
@@ -773,28 +771,41 @@ public partial class CaptureOverlayWindow : Window
             NativeMethods.SetWindowPos(handle, IntPtr.Zero, bounds.Left, bounds.Top, bounds.Width, bounds.Height, NativeMethods.SwpNoZOrder | NativeMethods.SwpNoActivate);
     }
 
+    /// <summary>
+    /// Physical screen rectangle of this overlay HWND. Spanning multi-monitor
+    /// overlays must not use WPF PointToScreen/PointFromScreen — those break
+    /// when the window covers monitors with different DPI.
+    /// </summary>
+    private System.Drawing.Rectangle OverlayHwndScreenRect()
+    {
+        var handle = _overlayHandle != IntPtr.Zero
+            ? _overlayHandle
+            : new WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero && NativeMethods.GetWindowRect(handle, out var native) &&
+            native.Width > 0 && native.Height > 0)
+            return new System.Drawing.Rectangle(native.Left, native.Top, native.Width, native.Height);
+
+        return DisplayTopologyService.VirtualBoundsPixels();
+    }
+
     private Point OverlayToScreen(Point point)
     {
-        try { return OverlayCanvas.PointToScreen(point); }
-        catch (InvalidOperationException)
-        {
-            var bounds = DisplayTopologyService.VirtualBoundsPixels();
-            return new Point(
-                bounds.Left + point.X * _screen.PixelWidth / Math.Max(1, ActualWidth),
-                bounds.Top + point.Y * _screen.PixelHeight / Math.Max(1, ActualHeight));
-        }
+        var bounds = OverlayHwndScreenRect();
+        var width = Math.Max(1.0, ActualWidth > 1 ? ActualWidth : bounds.Width);
+        var height = Math.Max(1.0, ActualHeight > 1 ? ActualHeight : bounds.Height);
+        return new Point(
+            bounds.Left + point.X * bounds.Width / width,
+            bounds.Top + point.Y * bounds.Height / height);
     }
 
     private Point ScreenToOverlay(Point point)
     {
-        try { return OverlayCanvas.PointFromScreen(point); }
-        catch (InvalidOperationException)
-        {
-            var bounds = DisplayTopologyService.VirtualBoundsPixels();
-            return new Point(
-                (point.X - bounds.Left) * ActualWidth / _screen.PixelWidth,
-                (point.Y - bounds.Top) * ActualHeight / _screen.PixelHeight);
-        }
+        var bounds = OverlayHwndScreenRect();
+        var width = Math.Max(1.0, ActualWidth > 1 ? ActualWidth : bounds.Width);
+        var height = Math.Max(1.0, ActualHeight > 1 ? ActualHeight : bounds.Height);
+        return new Point(
+            (point.X - bounds.Left) * width / bounds.Width,
+            (point.Y - bounds.Top) * height / bounds.Height);
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e)

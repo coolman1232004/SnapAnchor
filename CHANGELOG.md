@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.19] - 2026-07-24
+
+- Fixed multi-monitor detection: overlay no longer uses WPF `PointToScreen`/`PointFromScreen` across mixed-DPI displays (that broke the notebook panel when another monitor was above it)
+- Maps detection geometry through the overlay HWND’s physical `GetWindowRect` so window and UI outlines land on the correct screen
+- Smoother hover: UI Automation element walks run on a dedicated low-priority STA worker (never on the UI thread); window rects refresh cheaply when the cursor leaves all cached windows
+- Tighter element budgets and less spotlight / magnifier work while moving the mouse
+
 ## [2.1.18] - 2026-07-24
 
 - Fixed severe lag when element detection was enabled: capture no longer walks every window's UI Automation tree on open
