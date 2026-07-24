@@ -74,7 +74,10 @@
                     <CheckBox x:Name="CrossLinesBox" Grid.Row="3" Grid.ColumnSpan="2" Content="Show full-screen cross lines at the cursor" Margin="0,9" />
                     <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,5">
                         <CheckBox x:Name="ShowSizeBox" Content="Show coordinate and size badge above the selection" Margin="0,4" />
-                        <CheckBox x:Name="ShowElementDetectionBox" Content="Show automatic window and UI-element detection outline" Margin="0,4" />
+                        <CheckBox x:Name="ShowElementDetectionBox" Content="Show automatic window detection outline" Margin="0,4"
+                                  ToolTip="Dim the screen and light the window under the cursor while capturing. Smooth on multi-monitor setups."/>
+                        <CheckBox x:Name="DetectUiElementsBox" Content="Also detect small UI controls inside windows" Margin="0,4"
+                                  ToolTip="Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture."/>
                         <CheckBox x:Name="ShowCaptureHintsBox" Content="Show capture shortcut hints" Margin="0,4" />
                         <CheckBox x:Name="EnableColorMagnifierBox" Content="Enable colour picker / magnifier" Margin="0,4"
                                   ToolTip="Shows a pixel-perfect magnifier near the cursor while capturing. Press C to copy the colour, Shift to switch RGB/HEX."/>

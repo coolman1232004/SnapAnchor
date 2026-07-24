@@ -1494,4 +1494,9 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="X {0}   Y {1}" xml:space="preserve"><value>X {0}   Y {1}</value></data>
   <data name="C                        Copy colour under cursor" xml:space="preserve"><value>C                        Copy colour under cursor</value></data>
   <data name="Shift                   RGB / HEX colour format" xml:space="preserve"><value>Shift                   RGB / HEX colour format</value></data>
+  <data name="Show automatic window detection outline" xml:space="preserve"><value>Show automatic window detection outline</value></data>
+  <data name="Dim the screen and light the window under the cursor while capturing. Smooth on multi-monitor setups." xml:space="preserve"><value>Dim the screen and light the window under the cursor while capturing. Smooth on multi-monitor setups.</value></data>
+  <data name="Also detect small UI controls inside windows" xml:space="preserve"><value>Also detect small UI controls inside windows</value></data>
+  <data name="Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture." xml:space="preserve"><value>Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture.</value></data>
+  <data name="Tab                    Window / UI-element mode" xml:space="preserve"><value>Tab                    Window / UI-element mode</value></data>
 </root>

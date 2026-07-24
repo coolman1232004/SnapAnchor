@@ -45,7 +45,7 @@ public partial class CaptureOverlayWindow : Window
     private Rect _resizeStartRect;
     private IReadOnlyList<DetectedScreenRegion> _detectionCandidates = [];
     private int _detectionIndex;
-    private bool _detectElements = true;
+    private bool _detectElements;
     private CancellationTokenSource? _ocrCancellation;
     private string? _ocrHistoryRecordId;
     private bool _ocrLayoutMode;
@@ -94,6 +94,8 @@ public partial class CaptureOverlayWindow : Window
         _completionMode = completionMode;
         _options = options ?? new CaptureOptions();
         _colorPickerMode = completionMode == CaptureCompletionMode.ColorPicker;
+        // Window-first by default for smooth multi-monitor hover; optional UI refine.
+        _detectElements = _settings.DetectUiElements;
         _colorMagnifierUseHex = _settings.ColorMagnifierUseHex;
         _colorMagnifier.SetUseHex(_colorMagnifierUseHex);
         Panel.SetZIndex(_colorMagnifier, 3700);
@@ -119,9 +121,12 @@ public partial class CaptureOverlayWindow : Window
         if (CaptureOcrLanguageBox.SelectedIndex < 0) CaptureOcrLanguageBox.SelectedIndex = 3;
         OcrAutoCopyBox.IsChecked = _settings.OcrAutoCopy;
         ShortcutHints.Visibility = CaptureHintsVisibility;
-        DetectionWheelHint.Visibility = _settings.ShowElementDetection == false ? Visibility.Collapsed : Visibility.Visible;
-        DetectionTabHint.Visibility = _settings.ShowElementDetection == false ? Visibility.Collapsed : Visibility.Visible;
-        DetectionModeText.Visibility = _settings.ShowElementDetection == false ? Visibility.Collapsed : Visibility.Visible;
+        var detectionOn = _settings.ShowElementDetection != false;
+        DetectionWheelHint.Visibility = detectionOn && _detectElements ? Visibility.Visible : Visibility.Collapsed;
+        DetectionTabHint.Visibility = detectionOn ? Visibility.Visible : Visibility.Collapsed;
+        DetectionModeText.Visibility = detectionOn ? Visibility.Visible : Visibility.Collapsed;
+        if (detectionOn)
+            DetectionModeText.Text = $"{L("Mode")}: {L(_detectElements ? "UI element" : "Window")}";
         Loaded += (_, _) =>
         {
             _overlayHandle = new WindowInteropHelper(this).Handle;
@@ -464,25 +469,25 @@ public partial class CaptureOverlayWindow : Window
             ? new Point(cursor.X, cursor.Y)
             : OverlayToScreen(overlayPoint);
 
-        // Skip tiny jitter; full geometry hit-tests are cheap, layout is not.
+        // Window-only mode is pure geometry — keep it very smooth.
+        var minMove = _detectElements ? 2.0 : 3.0;
         var movedLittle = !double.IsNaN(_lastDetectionScreenPoint.X) &&
-            Math.Abs(screenPoint.X - _lastDetectionScreenPoint.X) < 2 &&
-            Math.Abs(screenPoint.Y - _lastDetectionScreenPoint.Y) < 2;
-        if (movedLittle && _detectionCandidates.Count > 0 && _detectionClock.ElapsedMilliseconds < 16)
+            Math.Abs(screenPoint.X - _lastDetectionScreenPoint.X) < minMove &&
+            Math.Abs(screenPoint.Y - _lastDetectionScreenPoint.Y) < minMove;
+        if (movedLittle && _detectionCandidates.Count > 0 && _detectionClock.ElapsedMilliseconds < (_detectElements ? 20 : 12))
             return;
 
-        // Inside the current lit hole: only re-query occasionally (element refine).
+        // Stay lit without re-layout while the pointer is still inside the hole.
         if (_detectionCandidates.Count > 0 &&
             !_detectedSelection.IsEmpty &&
             _detectedSelection.Contains(overlayPoint) &&
-            _detectionClock.ElapsedMilliseconds < (_detectElements ? 50 : 80))
+            _detectionClock.ElapsedMilliseconds < (_detectElements ? 45 : 100))
             return;
 
         _lastDetectionOverlayPoint = overlayPoint;
         _lastDetectionScreenPoint = screenPoint;
         _detectionClock.Restart();
 
-        // Geometry only on the UI thread. Element trees load on a worker STA.
         _detectionCandidates = ElementDetectionService.DetectHierarchy(screenPoint, _overlayHandle, _detectElements);
         if (_detectionCandidates.Count == 0)
         {
@@ -490,9 +495,7 @@ public partial class CaptureOverlayWindow : Window
             return;
         }
 
-        _detectionIndex = _detectElements
-            ? _detectionCandidates.Count - 1
-            : 0;
+        _detectionIndex = _detectElements ? _detectionCandidates.Count - 1 : 0;
         RenderDetectedCandidate();
     }
 
@@ -1157,7 +1160,7 @@ public partial class CaptureOverlayWindow : Window
                 return;
             }
             _detectElements = !_detectElements;
-            // Force a fresh hit-test against the prebuilt geometry cache.
+            DetectionWheelHint.Visibility = _detectElements ? Visibility.Visible : Visibility.Collapsed;
             _lastDetectionScreenPoint = new Point(double.NaN, double.NaN);
             _detectionClock.Reset();
             _detectionClock.Start();

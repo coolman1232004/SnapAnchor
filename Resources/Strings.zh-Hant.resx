@@ -1494,4 +1494,9 @@
   <data name="X {0}   Y {1}" xml:space="preserve"><value>X {0}   Y {1}</value></data>
   <data name="C                        Copy colour under cursor" xml:space="preserve"><value>C                        複製游標下的顏色</value></data>
   <data name="Shift                   RGB / HEX colour format" xml:space="preserve"><value>Shift                   RGB / HEX 顏色格式</value></data>
+  <data name="Show automatic window detection outline" xml:space="preserve"><value>顯示自動視窗偵測醒目提示</value></data>
+  <data name="Dim the screen and light the window under the cursor while capturing. Smooth on multi-monitor setups." xml:space="preserve"><value>截圖時變暗背景並醒目顯示游標下的視窗。在多螢幕上更流暢。</value></data>
+  <data name="Also detect small UI controls inside windows" xml:space="preserve"><value>同時偵測視窗內的小型 UI 控制項</value></data>
+  <data name="Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture." xml:space="preserve"><value>選用。在背景載入游標所在視窗的 UI Automation。預設關閉以保持流暢。截圖時仍可用 Tab 切換。</value></data>
+  <data name="Tab                    Window / UI-element mode" xml:space="preserve"><value>Tab                    視窗 / UI 元素模式</value></data>
 </root>

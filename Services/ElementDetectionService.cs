@@ -11,18 +11,15 @@ internal sealed record DetectedScreenRegion(Rect Bounds, string Name, bool IsEle
 /// <summary>
 /// Fast multi-monitor window / UI-element hover detection.
 ///
-/// Design (Snow Shot–like, independent):
-/// - Capture open: enumerate top-level window rects only (milliseconds).
-/// - Mouse move: pure geometry (never call UIA on the UI thread).
-/// - UI elements: lazy, one window at a time, on a dedicated STA worker thread
-///   with hard budgets so the capture overlay stays responsive.
-/// - Coordinates are always physical desktop pixels (GetWindowRect / GetCursorPos).
+/// Default path is window-only geometry (smooth, Snow Shot–like window snap).
+/// Optional UI-element refine loads one window at a time on a background STA
+/// worker with hard budgets — never on the UI thread.
 /// </summary>
 internal static class ElementDetectionService
 {
-    private const int MaxElementsPerWindow = 64;
+    private const int MaxElementsPerWindow = 48;
     private const int MaxElementDepth = 4;
-    private const int MaxNodesVisited = 160;
+    private const int MaxNodesVisited = 120;
 
     private sealed record CachedRegion(
         Rect Bounds,
@@ -38,16 +35,17 @@ internal static class ElementDetectionService
     private static readonly HashSet<IntPtr> ElementLoadStarted = new();
     private static IntPtr _excludedHwnd;
     private static long _lastWindowRefreshTick;
+    private static IntPtr _lastCursorMonitor;
     private static Thread? _worker;
     private static readonly ConcurrentQueue<Action> WorkerQueue = new();
     private static readonly AutoResetEvent WorkerSignal = new(false);
 
     public static DetectedScreenRegion? Detect(Point screenPoint, IntPtr excludedWindow)
-        => DetectHierarchy(screenPoint, excludedWindow, includeElements: true).LastOrDefault();
+        => DetectHierarchy(screenPoint, excludedWindow, includeElements: false).LastOrDefault();
 
     public static IntPtr WindowHandleAt(Point screenPoint, IntPtr excludedWindow)
     {
-        EnsureWindows(excludedWindow, forceRefresh: false);
+        EnsureWindows(excludedWindow);
         return HitTestWindow(screenPoint)?.Window ?? IntPtr.Zero;
     }
 
@@ -70,17 +68,27 @@ internal static class ElementDetectionService
     public static IReadOnlyList<DetectedScreenRegion> DetectHierarchy(
         Point screenPoint,
         IntPtr excludedWindow,
-        bool includeElements = true)
+        bool includeElements = false)
     {
-        EnsureWindows(excludedWindow, forceRefresh: false);
-        var top = HitTestWindow(screenPoint);
+        EnsureWindows(excludedWindow);
 
-        // Cursor outside every cached window (common after monitor switch / new app):
-        // cheap refresh of top-level rects only.
+        // When the cursor crosses monitors, refresh window rects (cheap EnumWindows).
+        var monitor = NativeMethods.MonitorFromPoint(
+            new NativeMethods.NativePoint { X = (int)Math.Round(screenPoint.X), Y = (int)Math.Round(screenPoint.Y) },
+            NativeMethods.MonitorDefaultToNearest);
+        if (monitor != IntPtr.Zero && monitor != _lastCursorMonitor)
+        {
+            _lastCursorMonitor = monitor;
+            var now = Environment.TickCount64;
+            if (now - _lastWindowRefreshTick > 80)
+                RebuildWindowCache(excludedWindow);
+        }
+
+        var top = HitTestWindow(screenPoint);
         if (top is null)
         {
             var now = Environment.TickCount64;
-            if (now - _lastWindowRefreshTick > 200)
+            if (now - _lastWindowRefreshTick > 150)
             {
                 RebuildWindowCache(excludedWindow);
                 top = HitTestWindow(screenPoint);
@@ -89,7 +97,7 @@ internal static class ElementDetectionService
 
         if (top is null) return Array.Empty<DetectedScreenRegion>();
 
-        var hits = new List<CachedRegion>(12) { top };
+        var hits = new List<CachedRegion>(8) { top };
 
         if (includeElements)
         {
@@ -110,13 +118,14 @@ internal static class ElementDetectionService
             {
                 foreach (var region in elements)
                 {
-                    if (!region.Bounds.Contains(screenPoint)) continue;
+                    if (!ContainsInclusive(region.Bounds, screenPoint)) continue;
                     if (hits.Any(existing => NearlyEqual(existing.Bounds, region.Bounds))) continue;
                     hits.Add(region);
                 }
             }
         }
 
+        // Window first, then larger → smaller so deepest is last.
         hits.Sort((left, right) =>
         {
             if (left.IsElement != right.IsElement)
@@ -154,14 +163,12 @@ internal static class ElementDetectionService
             if (!IsEligibleWindow(hwnd, excludedOverlayHwnd)) return true;
             var rect = WindowRect(hwnd);
             if (rect.IsEmpty || rect.Width < 8 || rect.Height < 8) return true;
-            // Keep titles short; avoid long GetWindowText on every enum during refresh.
             windows.Add(new CachedRegion(rect, "Window", false, zOrder, 0, hwnd));
             zOrder++;
             return true;
         }, IntPtr.Zero);
 
-        // Fill titles only for the first few topmost windows (display text).
-        for (var i = 0; i < windows.Count && i < 12; i++)
+        for (var i = 0; i < windows.Count && i < 16; i++)
         {
             var item = windows[i];
             windows[i] = item with { Name = WindowTitle(item.Window) };
@@ -212,7 +219,7 @@ internal static class ElementDetectionService
             while (WorkerQueue.TryDequeue(out var work))
             {
                 try { work(); }
-                catch { /* ignore */ }
+                catch { }
             }
         }
     }
@@ -244,20 +251,18 @@ internal static class ElementDetectionService
 
                     try
                     {
-                        // Only cheap properties — never Name (very slow).
                         var bounds = child.Current.BoundingRectangle;
                         var offscreen = child.Current.IsOffscreen;
-                        if (!offscreen && !bounds.IsEmpty && bounds.Width >= 6 && bounds.Height >= 6 &&
+                        if (!offscreen && !bounds.IsEmpty && bounds.Width >= 8 && bounds.Height >= 8 &&
                             bounds.IntersectsWith(windowBounds))
                         {
                             var clipped = Rect.Intersect(bounds, windowBounds);
-                            if (!clipped.IsEmpty && clipped.Width >= 4 && clipped.Height >= 4 &&
+                            if (!clipped.IsEmpty && clipped.Width >= 6 && clipped.Height >= 6 &&
                                 !NearlyEqual(clipped, windowBounds))
                             {
-                                var controlType = child.Current.ControlType;
                                 collected.Add(new CachedRegion(
                                     clipped,
-                                    ShortControlType(controlType),
+                                    ShortControlType(child.Current.ControlType),
                                     true,
                                     zOrder,
                                     depth + 1,
@@ -280,12 +285,11 @@ internal static class ElementDetectionService
         return collected;
     }
 
-    private static void EnsureWindows(IntPtr excludedWindow, bool forceRefresh)
+    private static void EnsureWindows(IntPtr excludedWindow)
     {
         lock (Sync)
         {
-            if (!forceRefresh && _windows.Count > 0 && _excludedHwnd == excludedWindow)
-                return;
+            if (_windows.Count > 0 && _excludedHwnd == excludedWindow) return;
         }
         RebuildWindowCache(excludedWindow);
     }
@@ -297,11 +301,42 @@ internal static class ElementDetectionService
         CachedRegion? top = null;
         foreach (var region in windows)
         {
-            if (!region.Bounds.Contains(screenPoint)) continue;
+            if (!ContainsInclusive(region.Bounds, screenPoint)) continue;
             if (top is null || region.ZOrder < top.ZOrder)
                 top = region;
         }
         return top;
+    }
+
+    /// <summary>
+    /// Prefer visible frame bounds (DWM) so maximized / multi-monitor windows
+    /// match what the user sees; fall back to GetWindowRect.
+    /// </summary>
+    private static Rect WindowRect(IntPtr hwnd)
+    {
+        if (TryExtendedFrameBounds(hwnd, out var extended) && extended.Width >= 8 && extended.Height >= 8)
+            return extended;
+        return NativeMethods.GetWindowRect(hwnd, out var rect)
+            ? new Rect(rect.Left, rect.Top, Math.Max(0, rect.Width), Math.Max(0, rect.Height))
+            : Rect.Empty;
+    }
+
+    private static bool TryExtendedFrameBounds(IntPtr hwnd, out Rect bounds)
+    {
+        bounds = Rect.Empty;
+        try
+        {
+            // DWMWA_EXTENDED_FRAME_BOUNDS = 9
+            var native = new NativeMethods.NativeRect();
+            if (NativeMethods.DwmGetWindowAttributeRect(hwnd, 9, ref native, System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.NativeRect>()) != 0)
+                return false;
+            bounds = new Rect(native.Left, native.Top, Math.Max(0, native.Width), Math.Max(0, native.Height));
+            return !bounds.IsEmpty;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool IsEligibleWindow(IntPtr hwnd, IntPtr excludedOverlayHwnd)
@@ -335,11 +370,6 @@ internal static class ElementDetectionService
         return false;
     }
 
-    private static Rect WindowRect(IntPtr hwnd) =>
-        NativeMethods.GetWindowRect(hwnd, out var rect)
-            ? new Rect(rect.Left, rect.Top, Math.Max(0, rect.Width), Math.Max(0, rect.Height))
-            : Rect.Empty;
-
     private static string WindowTitle(IntPtr hwnd)
     {
         try
@@ -365,6 +395,12 @@ internal static class ElementDetectionService
         if (string.IsNullOrWhiteSpace(name)) return "UI element";
         return name.Replace("ControlType.", string.Empty, StringComparison.Ordinal);
     }
+
+    private static bool ContainsInclusive(Rect bounds, Point point) =>
+        point.X >= bounds.X - 1 &&
+        point.X <= bounds.X + bounds.Width + 1 &&
+        point.Y >= bounds.Y - 1 &&
+        point.Y <= bounds.Y + bounds.Height + 1;
 
     private static bool NearlyEqual(Rect first, Rect second) =>
         Math.Abs(first.X - second.X) < 2 && Math.Abs(first.Y - second.Y) < 2 &&

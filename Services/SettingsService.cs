@@ -28,6 +28,11 @@ public sealed class AppSettings
     public bool ShowCrossLines { get; set; }
     public bool ShowCaptureSize { get; set; } = true;
     public bool? ShowElementDetection { get; set; } = true;
+    /// <summary>
+    /// When true, hover may refine from window outlines into smaller UI controls.
+    /// Default false keeps capture smooth (window spotlight only); Tab still toggles for a session.
+    /// </summary>
+    public bool DetectUiElements { get; set; }
     public bool ShowCaptureHints { get; set; } = true;
     /// <summary>Legacy name kept for JSON compatibility; prefer <see cref="EnableColorMagnifier"/>.</summary>
     public bool ShowColorSampler { get; set; } = true;

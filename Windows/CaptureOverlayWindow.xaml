@@ -162,8 +162,8 @@
                 <StackPanel>
                     <TextBlock Text="Capture shortcuts" Foreground="White" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
                     <TextBlock Text="W / A / S / D     Move cursor precisely" Foreground="White" FontSize="13" Margin="0,3"/>
+                    <TextBlock x:Name="DetectionTabHint" Text="Tab                    Window / UI-element mode" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock x:Name="DetectionWheelHint" Text="Mouse wheel      Parent / child UI element" Foreground="White" FontSize="13" Margin="0,3"/>
-                    <TextBlock x:Name="DetectionTabHint" Text="Tab                    Window / element mode" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="C                        Copy colour under cursor" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="Shift                   RGB / HEX colour format" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="Shift + C            Recognize and copy text" Foreground="White" FontSize="13" Margin="0,3"/>

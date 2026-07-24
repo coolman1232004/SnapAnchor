@@ -1,6 +1,6 @@
 param(
     [string]$DistDirectory = 'dist',
-    [string]$Version = '2.1.19',
+    [string]$Version = '2.1.20',
     [string]$CertificateThumbprint = $env:SNAPANCHOR_CERT_THUMBPRINT
 )
 
@@ -107,7 +107,7 @@ $manifest = [ordered]@{
     signed = -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)
     downloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Setup-win-x64.exe'
     portableDownloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Portable-win-x64.zip'
-    releaseNotes = 'SnapAnchor 2.1.19 fixes multi-monitor detection (mixed-DPI coordinate mapping) and keeps hover smooth with off-UI-thread element loading.'
+    releaseNotes = 'SnapAnchor 2.1.20 defaults to smooth window-only detection; optional UI-element refine; stronger multi-monitor window hit-testing.'
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dist 'release.json') -Encoding UTF8
 

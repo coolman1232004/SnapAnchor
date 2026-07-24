@@ -51,6 +51,7 @@ public partial class PreferencesWindow : Window
         CrossLinesBox.IsChecked = _settings.ShowCrossLines;
         ShowSizeBox.IsChecked = _settings.ShowCaptureSize;
         ShowElementDetectionBox.IsChecked = _settings.ShowElementDetection != false;
+        DetectUiElementsBox.IsChecked = _settings.DetectUiElements;
         ShowCaptureHintsBox.IsChecked = _settings.ShowCaptureHints;
         EnableColorMagnifierBox.IsChecked = _settings.EnableColorMagnifier;
         HdrColorCorrectionBox.IsChecked = _settings.CorrectHdrColors;
@@ -215,6 +216,7 @@ public partial class PreferencesWindow : Window
         _settings.ShowCrossLines = CrossLinesBox.IsChecked == true;
         _settings.ShowCaptureSize = ShowSizeBox.IsChecked == true;
         _settings.ShowElementDetection = ShowElementDetectionBox.IsChecked == true;
+        _settings.DetectUiElements = DetectUiElementsBox.IsChecked == true;
         _settings.ShowCaptureHints = ShowCaptureHintsBox.IsChecked == true;
         _settings.EnableColorMagnifier = EnableColorMagnifierBox.IsChecked == true;
         _settings.ShowColorSampler = _settings.EnableColorMagnifier;

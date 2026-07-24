@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.20] - 2026-07-24
+
+- Detection defaults to **smooth window spotlight** (Snow Shot–like window snap); small UI controls are optional
+- Preferences: **Show automatic window detection outline** + separate **Also detect small UI controls inside windows** (default off)
+- **Tab** still switches Window / UI-element mode for the current capture session
+- Multi-monitor: refresh window list when the cursor crosses displays; use DWM extended frame bounds and inclusive hit-tests
+- Smoother hover path with less layout work in window-only mode
+
 ## [2.1.19] - 2026-07-24
 
 - Fixed multi-monitor detection: overlay no longer uses WPF `PointToScreen`/`PointFromScreen` across mixed-DPI displays (that broke the notebook panel when another monitor was above it)

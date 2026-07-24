@@ -136,6 +136,12 @@ internal static class NativeMethods
     [DllImport("dwmapi.dll")]
     internal static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int attributeValue, int attributeSize);
 
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")]
+    internal static extern int DwmGetWindowAttributeRect(IntPtr hwnd, int attribute, ref NativeRect attributeValue, int attributeSize);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr MonitorFromPoint(NativePoint point, uint flags);
+
     [DllImport("user32.dll")]
     internal static extern IntPtr WindowFromPoint(NativePoint point);
 
