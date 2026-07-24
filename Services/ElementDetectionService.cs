@@ -7,6 +7,11 @@ namespace SnapAnchor.Services;
 
 internal sealed record DetectedScreenRegion(Rect Bounds, string Name, bool IsElement);
 
+/// <summary>
+/// Resolves the window and UI Automation element under the pointer for capture
+/// hover outlines. Uses public Windows APIs only (WindowFromPoint, UI Automation).
+/// Behaviour is inspired by common screenshot tools; the implementation is independent.
+/// </summary>
 internal static class ElementDetectionService
 {
     private static readonly object CacheSync = new();
@@ -28,38 +33,54 @@ internal static class ElementDetectionService
         if (window == IntPtr.Zero) return [];
         var windowRect = Rectangle(window);
         if (windowRect.IsEmpty) return [];
-        var regions = new List<DetectedScreenRegion> { new(windowRect, "Window", false) };
+        var regions = new List<DetectedScreenRegion> { new(windowRect, WindowLabel(window), false) };
 
         try
         {
-            var snapshot = SnapshotFor(window, windowRect);
-            var candidateIndex = snapshot.Elements
-                .Select((element, index) => (Element: element, Index: index))
-                .Where(item => item.Element.Bounds.Contains(screenPoint))
-                .OrderByDescending(item => item.Element.Depth)
-                .ThenBy(item => item.Element.Bounds.Width * item.Element.Bounds.Height)
-                .Select(item => item.Index)
-                .FirstOrDefault(-1);
-
-            if (candidateIndex >= 0)
+            // Prefer the live element under the cursor (fast, accurate on modern
+            // apps). Fall back to a short parent/child walk of a cached tree.
+            if (TryElementFromPoint(screenPoint, windowRect, out var livePath))
             {
-                var path = new Stack<CachedElement>();
-                while (candidateIndex >= 0 && candidateIndex < snapshot.Elements.Count)
+                foreach (var element in livePath)
                 {
-                    var element = snapshot.Elements[candidateIndex];
-                    path.Push(element);
-                    candidateIndex = element.ParentIndex;
-                }
-                foreach (var element in path)
-                {
-                    if (!element.Bounds.Contains(screenPoint) || regions.Any(region => NearlyEqual(region.Bounds, element.Bounds))) continue;
+                    if (!element.Bounds.Contains(screenPoint) || regions.Any(region => NearlyEqual(region.Bounds, element.Bounds)))
+                        continue;
                     regions.Add(new DetectedScreenRegion(element.Bounds, element.Name, true));
+                }
+            }
+            else
+            {
+                var snapshot = SnapshotFor(window, windowRect);
+                var candidateIndex = snapshot.Elements
+                    .Select((element, index) => (Element: element, Index: index))
+                    .Where(item => item.Element.Bounds.Contains(screenPoint))
+                    .OrderByDescending(item => item.Element.Depth)
+                    .ThenBy(item => item.Element.Bounds.Width * item.Element.Bounds.Height)
+                    .Select(item => item.Index)
+                    .FirstOrDefault(-1);
+
+                if (candidateIndex >= 0)
+                {
+                    var path = new Stack<CachedElement>();
+                    while (candidateIndex >= 0 && candidateIndex < snapshot.Elements.Count)
+                    {
+                        var element = snapshot.Elements[candidateIndex];
+                        path.Push(element);
+                        candidateIndex = element.ParentIndex;
+                    }
+                    foreach (var element in path)
+                    {
+                        if (!element.Bounds.Contains(screenPoint) || regions.Any(region => NearlyEqual(region.Bounds, element.Bounds)))
+                            continue;
+                        regions.Add(new DetectedScreenRegion(element.Bounds, element.Name, true));
+                    }
                 }
             }
         }
         catch
         {
-            // Some elevated or custom-rendered windows do not expose UI Automation.
+            // Elevated or custom-rendered windows may not expose UI Automation.
+            // The top-level window outline is still returned above.
         }
 
         return regions;
@@ -76,11 +97,121 @@ internal static class ElementDetectionService
         }, IntPtr.Zero);
         if (found == IntPtr.Zero) return null;
         var rect = Rectangle(found);
-        return rect.IsEmpty ? null : new DetectedScreenRegion(rect, "Active window", false);
+        return rect.IsEmpty ? null : new DetectedScreenRegion(rect, WindowLabel(found), false);
+    }
+
+    private static bool TryElementFromPoint(Point screenPoint, Rect windowBounds, out List<CachedElement> path)
+    {
+        path = [];
+        try
+        {
+            var element = AutomationElement.FromPoint(screenPoint);
+            if (element is null) return false;
+
+            var chain = new List<CachedElement>();
+            var current = element;
+            var depth = 0;
+            while (current is not null && depth < 16)
+            {
+                Rect bounds;
+                string name;
+                try
+                {
+                    bounds = current.Current.BoundingRectangle;
+                    name = current.Current.Name;
+                    if (current.Current.ControlType == ControlType.Window && chain.Count > 0)
+                        break;
+                }
+                catch
+                {
+                    break;
+                }
+
+                if (!bounds.IsEmpty && bounds.Width >= 2 && bounds.Height >= 2 &&
+                    bounds.IntersectsWith(windowBounds) && bounds.Width <= windowBounds.Width + 4 &&
+                    bounds.Height <= windowBounds.Height + 4)
+                {
+                    chain.Add(new CachedElement(
+                        bounds,
+                        string.IsNullOrWhiteSpace(name) ? ControlLabel(current) : name.Trim(),
+                        -1,
+                        depth));
+                }
+
+                try { current = TreeWalker.ControlViewWalker.GetParent(current); }
+                catch { break; }
+                depth++;
+            }
+
+            // Root → leaf order for Tab/wheel cycling (window already separate).
+            chain.Reverse();
+            // Drop a near-duplicate of the whole window.
+            path = chain
+                .Where(item => !NearlyEqual(item.Bounds, windowBounds))
+                .GroupBy(item => $"{item.Bounds.X:0},{item.Bounds.Y:0},{item.Bounds.Width:0},{item.Bounds.Height:0}")
+                .Select(group => group.First())
+                .ToList();
+            return path.Count > 0;
+        }
+        catch
+        {
+            path = [];
+            return false;
+        }
+    }
+
+    private static string ControlLabel(AutomationElement element)
+    {
+        try
+        {
+            var type = element.Current.ControlType?.ProgrammaticName;
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                var shortName = type.Replace("ControlType.", string.Empty, StringComparison.Ordinal);
+                if (!string.IsNullOrWhiteSpace(shortName)) return shortName;
+            }
+        }
+        catch { }
+        return "UI element";
+    }
+
+    private static string WindowLabel(IntPtr hwnd)
+    {
+        try
+        {
+            var length = NativeMethods.GetWindowTextLength(hwnd);
+            if (length > 0)
+            {
+                var buffer = new StringBuilder(length + 1);
+                if (NativeMethods.GetWindowText(hwnd, buffer, buffer.Capacity) > 0 &&
+                    !string.IsNullOrWhiteSpace(buffer.ToString()))
+                    return buffer.ToString().Trim();
+            }
+        }
+        catch { }
+        return "Window";
     }
 
     private static IntPtr FindWindow(Point point, IntPtr excludedWindow)
     {
+        // WindowFromPoint sees through our full-screen capture overlay when the
+        // overlay is excluded by process filter on the ancestor chain.
+        var native = new NativeMethods.NativePoint
+        {
+            X = (int)Math.Round(point.X),
+            Y = (int)Math.Round(point.Y)
+        };
+        var hit = NativeMethods.WindowFromPoint(native);
+        if (hit != IntPtr.Zero)
+        {
+            var root = NativeMethods.GetAncestor(hit, NativeMethods.GaRoot);
+            if (root == IntPtr.Zero) root = hit;
+            if (IsEligible(root, excludedWindow) && Rectangle(root).Contains(point))
+                return root;
+        }
+
+        // Fall back to Z-order enumeration (covers edge cases where WindowFromPoint
+        // returns a non-client or owned helper window we cannot use).
         IntPtr found = IntPtr.Zero;
         NativeMethods.EnumWindows((hwnd, _) =>
         {
@@ -95,13 +226,14 @@ internal static class ElementDetectionService
 
     private static bool IsEligible(IntPtr hwnd, IntPtr excludedWindow)
     {
-        if (hwnd == IntPtr.Zero || hwnd == excludedWindow || !NativeMethods.IsWindowVisible(hwnd) || NativeMethods.IsIconic(hwnd)) return false;
+        if (hwnd == IntPtr.Zero || hwnd == excludedWindow || !NativeMethods.IsWindowVisible(hwnd) || NativeMethods.IsIconic(hwnd))
+            return false;
         NativeMethods.GetWindowThreadProcessId(hwnd, out var processId);
         if (processId == Environment.ProcessId) return false;
-        if (!NativeMethods.GetWindowRect(hwnd, out var rect) || rect.Width < 20 || rect.Height < 20) return false;
+        if (!NativeMethods.GetWindowRect(hwnd, out var rect) || rect.Width < 8 || rect.Height < 8) return false;
         var className = new StringBuilder(128);
         NativeMethods.GetClassName(hwnd, className, className.Capacity);
-        return className.ToString() is not ("Shell_TrayWnd" or "Progman" or "WorkerW");
+        return className.ToString() is not ("Shell_TrayWnd" or "Progman" or "WorkerW" or "Shell_SecondaryTrayWnd");
     }
 
     private static Rect Rectangle(IntPtr hwnd) =>
@@ -153,7 +285,7 @@ internal static class ElementDetectionService
                     var name = child.Current.Name;
                     var currentIndex = destination.Count;
                     destination.Add(new CachedElement(bounds,
-                        string.IsNullOrWhiteSpace(name) ? "UI element" : name, parentIndex, depth + 1));
+                        string.IsNullOrWhiteSpace(name) ? ControlLabel(child) : name.Trim(), parentIndex, depth + 1));
                     BuildSnapshot(child, windowBounds, currentIndex, depth + 1, destination);
                 }
             }

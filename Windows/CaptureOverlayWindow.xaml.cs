@@ -220,10 +220,15 @@ public partial class CaptureOverlayWindow : Window
             UpdateResize(point);
         else if (_dragging)
             UpdateSelection(point);
-        else if (_settings.ShowElementDetection != false && _selection.Width < 3 && _selection.Height < 3 && _detectionClock.ElapsedMilliseconds >= 110)
+        else if (_settings.ShowElementDetection != false && _selection.Width < 3 && _selection.Height < 3)
         {
-            _detectionClock.Restart();
-            UpdateDetectedRegion(point);
+            // Keep hover outlines responsive like typical screenshot tools:
+            // refresh quickly while the pointer is still choosing a target.
+            if (_detectionClock.ElapsedMilliseconds >= 40)
+            {
+                _detectionClock.Restart();
+                UpdateDetectedRegion(point);
+            }
         }
         else if (_selection.Width >= 3 || _settings.ShowElementDetection == false)
         {
@@ -385,8 +390,12 @@ public partial class CaptureOverlayWindow : Window
 
     private void UpdateDetectedRegion(Point overlayPoint)
     {
-        if (_overlayHandle == IntPtr.Zero) return;
-        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
+        if (_overlayHandle == IntPtr.Zero)
+        {
+            _overlayHandle = new WindowInteropHelper(this).Handle;
+            if (_overlayHandle == IntPtr.Zero) return;
+        }
+
         var screenPoint = OverlayToScreen(overlayPoint);
         _detectionCandidates = ElementDetectionService.DetectHierarchy(screenPoint, _overlayHandle);
         if (_detectionCandidates.Count == 0)
@@ -396,7 +405,10 @@ public partial class CaptureOverlayWindow : Window
             return;
         }
 
-        _detectionIndex = _detectElements ? _detectionCandidates.Count - 1 : 0;
+        // Prefer the deepest UI element when element mode is on; otherwise the window.
+        _detectionIndex = _detectElements
+            ? _detectionCandidates.Count - 1
+            : 0;
         RenderDetectedCandidate();
     }
 
@@ -892,16 +904,25 @@ public partial class CaptureOverlayWindow : Window
 
     private async void LongCapture_Click(object sender, RoutedEventArgs e) => await RunLongCaptureAsync();
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private Microsoft.Win32.SaveFileDialog CreateImageSaveDialog()
     {
-        var dialog = new SaveFileDialog
+        var suggested = SettingsService.CreateOutputPath(
+            Directory.Exists(_settings.QuickSaveFolder) ? _settings.QuickSaveFolder : Path.GetTempPath(),
+            _settings.OutputFileName);
+        return new Microsoft.Win32.SaveFileDialog
         {
             Filter = CaptureService.ImageSaveFilter,
             DefaultExt = CaptureService.ExtensionForFormat(_settings.OutputFormat),
             FilterIndex = CaptureService.FilterIndexForFormat(_settings.OutputFormat),
             AddExtension = true,
-            FileName = Path.GetFileName(SettingsService.CreateOutputPath(Path.GetTempPath(), _settings.OutputFileName))
+            InitialDirectory = Path.GetDirectoryName(suggested) ?? _settings.QuickSaveFolder,
+            FileName = Path.GetFileName(suggested)
         };
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = CreateImageSaveDialog();
         if (dialog.ShowDialog(this) != true) return;
         var image = CurrentResultImage(out var annotationStored);
         CaptureService.SaveImage(image, dialog.FileName, _settings.ImageQuality, _settings);

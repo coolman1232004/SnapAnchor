@@ -576,10 +576,20 @@ public partial class AnnotationEditorControl : UserControl
             return;
         }
 
-        // Snow Shot/Excalidraw-style quick selection: an existing object wins
-        // the hit test even while a drawing tool remains active. Empty image
-        // space still starts a new annotation with the current tool.
-        if (TryBeginExistingItemInteraction(e.OriginalSource as DependencyObject, point, e.ClickCount))
+        // Drawing tools must still be able to paint inside earlier shapes
+        // (e.g. blur/pencil inside a rectangle). Handles always win; filled
+        // interiors of shapes do not block new strokes. Full quick-select of
+        // existing objects stays available from the Select tool.
+        if (_tool is "Select" or "None")
+        {
+            if (TryBeginExistingItemInteraction(e.OriginalSource as DependencyObject, point, e.ClickCount, force: true))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+        else if (!IsBrushTool(_tool) &&
+                 TryBeginExistingItemInteraction(e.OriginalSource as DependencyObject, point, e.ClickCount, force: false))
         {
             e.Handled = true;
             return;
@@ -671,10 +681,16 @@ public partial class AnnotationEditorControl : UserControl
         e.Handled = true;
     }
 
-    private bool TryBeginExistingItemInteraction(DependencyObject? source, Point point, int clickCount)
+    private bool TryBeginExistingItemInteraction(DependencyObject? source, Point point, int clickCount, bool force)
     {
         if (FindItemId(source) is not Guid itemId ||
             _items.FirstOrDefault(item => item.Id == itemId) is not { } selected)
+            return false;
+
+        // Filled shapes (rectangle/ellipse/magnify) occupy a large interior.
+        // Only the border (or Select tool) should claim that hit; the interior
+        // must remain free for pencil, blur, nested shapes, and text.
+        if (!force && IsInteriorOnlyHit(selected, point))
             return false;
 
         _selectedId = itemId;
@@ -696,6 +712,39 @@ public partial class AnnotationEditorControl : UserControl
         _dragging = true;
         Surface.CaptureMouse();
         RenderAnnotations();
+        return true;
+    }
+
+    private static bool IsBrushTool(string tool) =>
+        tool is "Pencil" or "Marker" or "Blur" or "Eraser";
+
+    private static bool IsInteriorOnlyHit(AnnotationItem item, Point point)
+    {
+        if (item.Kind is not (AnnotationKind.Rectangle or AnnotationKind.Ellipse or AnnotationKind.Magnify or AnnotationKind.Mosaic))
+            return false;
+
+        var bounds = Bounds(item);
+        var margin = Math.Max(10, item.Thickness + 6);
+        if (bounds.Width <= margin * 2 || bounds.Height <= margin * 2)
+            return false;
+
+        var inner = new Rect(
+            bounds.X + margin,
+            bounds.Y + margin,
+            bounds.Width - margin * 2,
+            bounds.Height - margin * 2);
+
+        if (!inner.Contains(point)) return false;
+
+        if (item.Kind == AnnotationKind.Ellipse ||
+            (item.Kind == AnnotationKind.Magnify && string.Equals(item.EffectShape, "Ellipse", StringComparison.OrdinalIgnoreCase)))
+        {
+            var center = new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+            var nx = (point.X - center.X) / Math.Max(1, bounds.Width / 2 - margin);
+            var ny = (point.Y - center.Y) / Math.Max(1, bounds.Height / 2 - margin);
+            return nx * nx + ny * ny <= 1;
+        }
+
         return true;
     }
 
@@ -1113,16 +1162,24 @@ public partial class AnnotationEditorControl : UserControl
         DocumentStored?.Invoke(new AnnotationAppliedEventArgs(_source, image, Clone(_items)));
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private SaveFileDialog CreateImageSaveDialog()
     {
-        var dialog = new SaveFileDialog
+        var folder = Directory.Exists(_settings.QuickSaveFolder) ? _settings.QuickSaveFolder : Path.GetTempPath();
+        var suggested = SettingsService.CreateOutputPath(folder, _settings.OutputFileName);
+        return new SaveFileDialog
         {
             Filter = CaptureService.ImageSaveFilter,
             DefaultExt = CaptureService.ExtensionForFormat(_settings.OutputFormat),
             FilterIndex = CaptureService.FilterIndexForFormat(_settings.OutputFormat),
             AddExtension = true,
-            FileName = Path.GetFileName(SettingsService.CreateOutputPath(Path.GetTempPath(), _settings.OutputFileName))
+            InitialDirectory = Path.GetDirectoryName(suggested) ?? folder,
+            FileName = Path.GetFileName(suggested)
         };
+    }
+
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = CreateImageSaveDialog();
         if (dialog.ShowDialog(Window.GetWindow(this)) == true)
         {
             var image = Flatten();

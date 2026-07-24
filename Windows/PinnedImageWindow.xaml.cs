@@ -1004,13 +1004,16 @@ public partial class PinnedImageWindow : Window
 
     private void SaveBitmap(BitmapSource source, bool applyOutputEffects)
     {
+        var folder = Directory.Exists(_settings.QuickSaveFolder) ? _settings.QuickSaveFolder : Path.GetTempPath();
+        var suggested = SettingsService.CreateOutputPath(folder, _settings.OutputFileName);
         var dialog = new SaveFileDialog
         {
             Filter = CaptureService.ImageSaveFilter,
             DefaultExt = CaptureService.ExtensionForFormat(_settings.OutputFormat),
             FilterIndex = CaptureService.FilterIndexForFormat(_settings.OutputFormat),
             AddExtension = true,
-            FileName = $"SnapAnchor_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}{CaptureService.ExtensionForFormat(_settings.OutputFormat)}"
+            InitialDirectory = Path.GetDirectoryName(suggested) ?? folder,
+            FileName = Path.GetFileName(suggested)
         };
         if (dialog.ShowDialog(this) == true)
             CaptureService.SaveImage(source, dialog.FileName, _settings.ImageQuality, applyOutputEffects ? _settings : null);

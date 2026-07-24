@@ -44,7 +44,7 @@ public sealed class AppSettings
     public bool PinGroupsFollowVirtualDesktops { get; set; }
     public Dictionary<string, string> PinGroupDesktopBindings { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string DefaultPinBackground { get; set; } = "Transparent";
-    public string OutputFileName { get; set; } = "SnapAnchor_$yyyy-MM-dd_HH-mm-ss.png";
+    public string OutputFileName { get; set; } = "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss.png";
     public string OutputFormat { get; set; } = "PNG";
     public int ImageQuality { get; set; } = 92;
     public int OutputBorderWidth { get; set; }
@@ -280,9 +280,10 @@ internal static class SettingsService
         settings.OutputBorderWidth = Math.Clamp(settings.OutputBorderWidth, 0, 32);
         settings.OutputShadowSize = Math.Clamp(settings.OutputShadowSize, 1, 64);
         var outputExtension = settings.OutputFormat switch { "JPEG" => ".jpg", "WEBP" => ".webp", _ => ".png" };
-        settings.OutputFileName = Path.ChangeExtension(
-            string.IsNullOrWhiteSpace(settings.OutputFileName) ? "SnapAnchor_$yyyy-MM-dd_HH-mm-ss" : settings.OutputFileName,
-            outputExtension);
+        var outputStem = string.IsNullOrWhiteSpace(settings.OutputFileName)
+            ? "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss"
+            : NormalizeOutputFileNameTemplate(settings.OutputFileName);
+        settings.OutputFileName = Path.ChangeExtension(outputStem, outputExtension);
         return settings;
     }
 
@@ -310,13 +311,7 @@ internal static class SettingsService
     public static string CreateOutputPath(string folder, string template, string extension)
     {
         var now = DateTime.Now;
-        var fileName = template
-            .Replace("$yyyy", now.ToString("yyyy"), StringComparison.Ordinal)
-            .Replace("$MM", now.ToString("MM"), StringComparison.Ordinal)
-            .Replace("$dd", now.ToString("dd"), StringComparison.Ordinal)
-            .Replace("$HH", now.ToString("HH"), StringComparison.Ordinal)
-            .Replace("$mm", now.ToString("mm"), StringComparison.Ordinal)
-            .Replace("$ss", now.ToString("ss"), StringComparison.Ordinal);
+        var fileName = ExpandOutputFileName(template, now);
         extension = extension.StartsWith('.') ? extension : $".{extension}";
         fileName = Path.ChangeExtension(fileName, extension);
         foreach (var invalid in Path.GetInvalidFileNameChars()) fileName = fileName.Replace(invalid, '_');
@@ -324,6 +319,47 @@ internal static class SettingsService
         var path = Path.Combine(folder, fileName);
         if (!File.Exists(path)) return path;
         return Path.Combine(folder, $"{Path.GetFileNameWithoutExtension(fileName)}_{now:fff}{extension}");
+    }
+
+    /// <summary>
+    /// Expands output-name tokens so Save dialogs show a real filename such as
+    /// SnapAnchor_2026-07-24_15-04-22.png instead of leaving $yyyy/$MM placeholders.
+    /// </summary>
+    public static string ExpandOutputFileName(string? template, DateTime? timestamp = null)
+    {
+        var now = timestamp ?? DateTime.Now;
+        var fileName = string.IsNullOrWhiteSpace(template)
+            ? "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss.png"
+            : template.Trim();
+
+        // Legacy default used $yyyy-MM-dd without $ before each token, so only
+        // the year expanded and the dialog showed SnapAnchor_2026-MM-dd_HH-mm-ss.png.
+        fileName = NormalizeOutputFileNameTemplate(fileName);
+
+        // Longer tokens first so $yyyy wins over any shorter prefix.
+        fileName = fileName
+            .Replace("$yyyy", now.ToString("yyyy"), StringComparison.Ordinal)
+            .Replace("$MM", now.ToString("MM"), StringComparison.Ordinal)
+            .Replace("$dd", now.ToString("dd"), StringComparison.Ordinal)
+            .Replace("$HH", now.ToString("HH"), StringComparison.Ordinal)
+            .Replace("$mm", now.ToString("mm"), StringComparison.Ordinal)
+            .Replace("$ss", now.ToString("ss"), StringComparison.Ordinal)
+            .Replace("$fff", now.ToString("fff"), StringComparison.Ordinal);
+
+        return fileName;
+    }
+
+    internal static string NormalizeOutputFileNameTemplate(string template)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+            return "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss.png";
+
+        // Fix the historical default and close variants that omit $ before MM/dd/HH/mm/ss.
+        return template
+            .Replace("SnapAnchor_$yyyy-MM-dd_HH-mm-ss", "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss", StringComparison.OrdinalIgnoreCase)
+            .Replace("$yyyy-MM-dd_HH-mm-ss", "$yyyy-$MM-$dd_$HH-$mm-$ss", StringComparison.Ordinal)
+            .Replace("$yyyy-MM-dd", "$yyyy-$MM-$dd", StringComparison.Ordinal)
+            .Replace("$HH-mm-ss", "$HH-$mm-$ss", StringComparison.Ordinal);
     }
 
     private static void ApplyStartup(bool enabled)

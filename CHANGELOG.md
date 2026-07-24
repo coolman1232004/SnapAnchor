@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.14] - 2026-07-24
+
+- Drawing tools can annotate **inside** existing rectangles/ellipses again (blur, pencil, marker, nested shapes); filled interiors no longer steal the hit test
+- Brush tools always paint; shape borders and the Select tool still move/resize earlier objects
+- Window/UI-element hover detection uses `WindowFromPoint` plus live UI Automation under the cursor for more reliable outlines (independent implementation)
+- Detection outline refreshes faster while choosing a target
+- Save dialogs now pre-fill a **fully expanded** timestamp name (e.g. `SnapAnchor_2026-07-24_15-04-22.png`) instead of leaving `MM-dd_HH-mm-ss` placeholders
+- Migrates the legacy default filename template so every date/time token expands
+
 ## [2.1.13] - 2026-07-24
 
 - Exposed **Numbered marker** and **Callout** annotation tools in the capture and pin toolbars (already implemented; previously missing from the toolbar catalog)

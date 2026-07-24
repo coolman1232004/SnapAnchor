@@ -1160,12 +1160,31 @@ internal static class Program
             var liveArrow = ((List<AnnotationItem>)type.GetField("_items", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .GetValue(editor)!)[0];
             var quickSelect = (bool)type.GetMethod("TryBeginExistingItemInteraction", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .Invoke(editor, [renderedArrow, new Point(145, 95), 1])!;
+                .Invoke(editor, [renderedArrow, new Point(145, 95), 1, false])!;
             var selectedOlderObjectWithoutChangingTool = quickSelect &&
                 type.GetField("_selectedId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(editor) is Guid selectedId &&
                 selectedId == liveArrow.Id &&
                 type.GetField("_transformMode", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(editor) as string == "Move" &&
                 type.GetField("_tool", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(editor) as string == "Arrow";
+
+            // A large rectangle must not block brush strokes painted in its interior.
+            var coveringBox = new AnnotationItem
+            {
+                Kind = AnnotationKind.Rectangle,
+                X = 20,
+                Y = 20,
+                Width = 220,
+                Height = 160,
+                Thickness = 3,
+                Color = "#FFEF4444"
+            };
+            editor.LoadImage(annotationBase, [coveringBox]);
+            editor.ActivateConfiguredTool("Pencil");
+            var boxElement = ((Canvas)editor.FindName("AnnotationCanvas")).Children.OfType<FrameworkElement>()
+                .First(child => child.Tag is Guid id && id == coveringBox.Id);
+            var interiorBlocked = (bool)type.GetMethod("TryBeginExistingItemInteraction", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(editor, [boxElement, new Point(120, 100), 1, false])!;
+            var interiorBrushAllowed = !interiorBlocked;
             type.GetField("_dragging", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(editor, false);
             type.GetField("_activeId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(editor, null);
             type.GetField("_transformMode", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.SetValue(editor, string.Empty);
@@ -1191,10 +1210,11 @@ internal static class Program
                 liveArrow.Points[1] == new Point(310, 205);
 
             return arrowHasThreePurposeBuiltHandles && quickSelectionCursorsAreDistinct &&
-                selectedOlderObjectWithoutChangingTool && midpointMovesWholeArrow && endpointChangesDirection;
+                selectedOlderObjectWithoutChangingTool && midpointMovesWholeArrow && endpointChangesDirection &&
+                interiorBrushAllowed;
         });
         if (!arrowAdjustmentMatches) return 64;
-        Console.WriteLine("ARROW ADJUSTMENT: draggable start, midpoint and end controls verified");
+        Console.WriteLine("ARROW ADJUSTMENT: draggable start, midpoint and end controls verified; interior brush paint allowed");
 
         var brushEffectsMatch = RunSta(() =>
         {
@@ -1270,7 +1290,15 @@ internal static class Program
         var outputRoot = Path.Combine(Path.GetTempPath(), $"snapanchor-output-{Guid.NewGuid():N}");
         var webpOutput = SettingsService.CreateOutputPath(outputRoot, "SnapAnchor_$yyyy.webp");
         var jpegOutput = SettingsService.CreateOutputPath(outputRoot, "SnapAnchor_$yyyy.jpeg");
-        if (Path.GetExtension(webpOutput) != ".webp" || Path.GetExtension(jpegOutput) != ".jpeg" ||
+        var stamp = new DateTime(2026, 7, 24, 15, 4, 22);
+        // Legacy template omitted $ before MM/dd/HH/mm/ss and only expanded the year.
+        var legacyExpanded = SettingsService.ExpandOutputFileName("SnapAnchor_$yyyy-MM-dd_HH-mm-ss.png", stamp);
+        var modernExpanded = SettingsService.ExpandOutputFileName("SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss.png", stamp);
+        var defaultName = new AppSettings().OutputFileName;
+        if (legacyExpanded != "SnapAnchor_2026-07-24_15-04-22.png" ||
+            modernExpanded != "SnapAnchor_2026-07-24_15-04-22.png" ||
+            defaultName != "SnapAnchor_$yyyy-$MM-$dd_$HH-$mm-$ss.png" ||
+            Path.GetExtension(webpOutput) != ".webp" || Path.GetExtension(jpegOutput) != ".jpeg" ||
             HotkeyOptions.Get("CtrlShiftD").VirtualKey != 0x44 || HotkeyOptions.Get("CtrlAlt9").VirtualKey != 0x39 || HotkeyOptions.All.Length < 200) return 23;
         var normalizedHotkeyExclusions = HotkeyExclusionService.Normalize([" chrome ", "CHROME", "PowerPnt", ""]);
         if (normalizedHotkeyExclusions.Count != 2 ||
