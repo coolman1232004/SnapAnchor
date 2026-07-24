@@ -1,22 +1,25 @@
 using System.Text;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Threading;
 
 namespace SnapAnchor.Services;
 
 internal sealed record DetectedScreenRegion(Rect Bounds, string Name, bool IsElement);
 
 /// <summary>
-/// Window / UI-element hover detection for capture.
-/// Snow Shot–style architecture (independent implementation):
-/// 1) Build a geometry cache of top-level windows + UI Automation elements
-///    when capture starts (before / while the overlay is shown).
-/// 2) On mouse move, only do geometric hit-tests against that cache.
-/// Live AutomationElement.FromPoint / WindowFromPoint cannot see through our
-/// full-screen overlay, so they must not be used for hover detection.
+/// Fast window / UI-element hover detection for capture.
+///
+/// Performance (Snow Shot–style, independent code):
+/// 1) Capture open → enumerate top-level window rects only (milliseconds, UI-safe).
+/// 2) Mouse move → pure geometry hit-tests (no UI Automation on the hot path).
+/// 3) UI elements → lazy, one window at a time, on Background priority, with a hard budget.
 /// </summary>
 internal static class ElementDetectionService
 {
+    private const int MaxElementsPerWindow = 80;
+    private const int MaxElementDepth = 5;
+
     private sealed record CachedRegion(
         Rect Bounds,
         string Name,
@@ -26,41 +29,96 @@ internal static class ElementDetectionService
         IntPtr Window);
 
     private static readonly object Sync = new();
-    private static IReadOnlyList<CachedRegion> _cache = Array.Empty<CachedRegion>();
-    private static long _cacheTick;
+    private static List<CachedRegion> _windows = [];
+    private static readonly Dictionary<IntPtr, List<CachedRegion>> ElementsByWindow = new();
+    private static readonly HashSet<IntPtr> ElementLoadStarted = new();
     private static IntPtr _excludedHwnd;
-    private static readonly TimeSpan CacheLifetime = TimeSpan.FromSeconds(8);
 
     public static DetectedScreenRegion? Detect(Point screenPoint, IntPtr excludedWindow)
         => DetectHierarchy(screenPoint, excludedWindow, includeElements: true).LastOrDefault();
 
     public static IntPtr WindowHandleAt(Point screenPoint, IntPtr excludedWindow)
     {
-        EnsureCache(excludedWindow, force: false);
-        var hit = HitTest(screenPoint, includeElements: false).FirstOrDefault();
-        return hit?.Window ?? IntPtr.Zero;
+        EnsureWindows(excludedWindow);
+        return HitTestWindow(screenPoint)?.Window ?? IntPtr.Zero;
     }
 
     /// <summary>
-    /// Build / refresh the geometry cache. Call when the capture overlay opens.
+    /// Instant window-only cache. Safe on the UI thread when capture opens.
+    /// Does not touch UI Automation.
     /// </summary>
-    public static void RebuildCache(IntPtr excludedOverlayHwnd)
+    public static void RebuildWindowCache(IntPtr excludedOverlayHwnd)
     {
+        var windows = new List<CachedRegion>(64);
+        var zOrder = 0;
+        NativeMethods.EnumWindows((hwnd, _) =>
+        {
+            if (!IsEligibleWindow(hwnd, excludedOverlayHwnd)) return true;
+            var rect = WindowRect(hwnd);
+            if (rect.IsEmpty || rect.Width < 8 || rect.Height < 8) return true;
+            windows.Add(new CachedRegion(rect, WindowTitle(hwnd), false, zOrder, 0, hwnd));
+            zOrder++;
+            return true;
+        }, IntPtr.Zero);
+
         lock (Sync)
         {
             _excludedHwnd = excludedOverlayHwnd;
-            _cache = BuildCache(excludedOverlayHwnd);
-            _cacheTick = Environment.TickCount64;
+            _windows = windows;
+            ElementsByWindow.Clear();
+            ElementLoadStarted.Clear();
         }
     }
+
+    public static void RebuildCache(IntPtr excludedOverlayHwnd) => RebuildWindowCache(excludedOverlayHwnd);
 
     public static IReadOnlyList<DetectedScreenRegion> DetectHierarchy(
         Point screenPoint,
         IntPtr excludedWindow,
         bool includeElements = true)
     {
-        EnsureCache(excludedWindow, force: false);
-        return HitTest(screenPoint, includeElements)
+        EnsureWindows(excludedWindow);
+        var top = HitTestWindow(screenPoint);
+        if (top is null) return Array.Empty<DetectedScreenRegion>();
+
+        var hits = new List<CachedRegion>(12) { top };
+
+        if (includeElements)
+        {
+            List<CachedRegion>? elements = null;
+            var shouldSchedule = false;
+            lock (Sync)
+            {
+                if (ElementsByWindow.TryGetValue(top.Window, out var ready))
+                    elements = ready;
+                else if (ElementLoadStarted.Add(top.Window))
+                    shouldSchedule = true;
+            }
+
+            if (shouldSchedule)
+                ScheduleElementLoad(top.Window, top.Bounds, top.ZOrder);
+
+            if (elements is { Count: > 0 })
+            {
+                foreach (var region in elements)
+                {
+                    if (!region.Bounds.Contains(screenPoint)) continue;
+                    if (hits.Any(existing => NearlyEqual(existing.Bounds, region.Bounds))) continue;
+                    hits.Add(region);
+                }
+            }
+        }
+
+        hits.Sort((left, right) =>
+        {
+            if (left.IsElement != right.IsElement)
+                return left.IsElement ? 1 : -1;
+            var area = (right.Bounds.Width * right.Bounds.Height)
+                .CompareTo(left.Bounds.Width * left.Bounds.Height);
+            return area != 0 ? area : left.Depth.CompareTo(right.Depth);
+        });
+
+        return hits
             .Select(region => new DetectedScreenRegion(region.Bounds, region.Name, region.IsElement))
             .ToList();
     }
@@ -79,156 +137,111 @@ internal static class ElementDetectionService
         return rect.IsEmpty ? null : new DetectedScreenRegion(rect, WindowTitle(found), false);
     }
 
-    private static void EnsureCache(IntPtr excludedWindow, bool force)
+    private static void ScheduleElementLoad(IntPtr window, Rect windowBounds, int zOrder)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            // Non-WPF callers (smoke tests): load synchronously with the same budget.
+            LoadElementsForWindow(window, windowBounds, zOrder);
+            return;
+        }
+
+        dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            try { LoadElementsForWindow(window, windowBounds, zOrder); }
+            catch { /* best effort */ }
+        });
+    }
+
+    private static void LoadElementsForWindow(IntPtr window, Rect windowBounds, int zOrder)
+    {
+        var collected = new List<CachedRegion>(MaxElementsPerWindow);
+        try
+        {
+            var root = AutomationElement.FromHandle(window);
+            // Breadth-first with hard caps — never unbounded recursion on huge trees.
+            var queue = new Queue<(AutomationElement Element, int Depth)>();
+            queue.Enqueue((root, 0));
+            var visited = 0;
+            const int maxVisited = 250;
+
+            while (queue.Count > 0 && collected.Count < MaxElementsPerWindow && visited < maxVisited)
+            {
+                var (element, depth) = queue.Dequeue();
+                visited++;
+                if (depth >= MaxElementDepth) continue;
+
+                AutomationElement? child;
+                try { child = TreeWalker.ControlViewWalker.GetFirstChild(element); }
+                catch { continue; }
+
+                while (child is not null && collected.Count < MaxElementsPerWindow && visited < maxVisited)
+                {
+                    AutomationElement? next = null;
+                    try { next = TreeWalker.ControlViewWalker.GetNextSibling(child); } catch { }
+
+                    try
+                    {
+                        var current = child.Current;
+                        // Deliberately skip Name — it is one of the slowest UIA properties.
+                        if (!current.IsOffscreen)
+                        {
+                            var bounds = current.BoundingRectangle;
+                            if (!bounds.IsEmpty && bounds.Width >= 4 && bounds.Height >= 4 &&
+                                bounds.IntersectsWith(windowBounds))
+                            {
+                                var clipped = Rect.Intersect(bounds, windowBounds);
+                                if (!clipped.IsEmpty && clipped.Width >= 3 && clipped.Height >= 3 &&
+                                    !NearlyEqual(clipped, windowBounds))
+                                {
+                                    collected.Add(new CachedRegion(
+                                        clipped,
+                                        ShortControlType(current.ControlType),
+                                        true,
+                                        zOrder,
+                                        depth + 1,
+                                        window));
+                                }
+
+                                if (depth + 1 < MaxElementDepth)
+                                    queue.Enqueue((child, depth + 1));
+                            }
+                        }
+                    }
+                    catch { }
+
+                    child = next;
+                    visited++;
+                }
+            }
+        }
+        catch { }
+
+        lock (Sync) ElementsByWindow[window] = collected;
+    }
+
+    private static void EnsureWindows(IntPtr excludedWindow)
     {
         lock (Sync)
         {
-            var age = Environment.TickCount64 - _cacheTick;
-            if (!force && _cache.Count > 0 && age >= 0 && age < CacheLifetime.TotalMilliseconds &&
-                _excludedHwnd == excludedWindow)
-                return;
-            _excludedHwnd = excludedWindow;
-            _cache = BuildCache(excludedWindow);
-            _cacheTick = Environment.TickCount64;
+            if (_windows.Count > 0 && _excludedHwnd == excludedWindow) return;
         }
+        RebuildWindowCache(excludedWindow);
     }
 
-    private static List<CachedRegion> BuildCache(IntPtr excludedOverlayHwnd)
+    private static CachedRegion? HitTestWindow(Point screenPoint)
     {
-        var regions = new List<CachedRegion>(512);
-        var zOrder = 0;
-
-        NativeMethods.EnumWindows((hwnd, _) =>
+        List<CachedRegion> windows;
+        lock (Sync) windows = _windows;
+        CachedRegion? top = null;
+        foreach (var region in windows)
         {
-            if (!IsEligibleWindow(hwnd, excludedOverlayHwnd)) return true;
-            var rect = WindowRect(hwnd);
-            if (rect.IsEmpty || rect.Width < 8 || rect.Height < 8) return true;
-
-            var title = WindowTitle(hwnd);
-            regions.Add(new CachedRegion(rect, title, IsElement: false, ZOrder: zOrder, Depth: 0, Window: hwnd));
-
-            // Collect UI elements under this top-level window once. Hover later
-            // only does geometry tests — never live FromPoint through the overlay.
-            try
-            {
-                var root = AutomationElement.FromHandle(hwnd);
-                CollectElements(root, rect, hwnd, zOrder, depth: 1, regions, remaining: 400);
-            }
-            catch
-            {
-                // Some elevated or custom surfaces expose no UI Automation tree.
-            }
-
-            zOrder++;
-            return true;
-        }, IntPtr.Zero);
-
-        return regions;
-    }
-
-    private static void CollectElements(
-        AutomationElement parent,
-        Rect windowBounds,
-        IntPtr window,
-        int zOrder,
-        int depth,
-        List<CachedRegion> destination,
-        int remaining)
-    {
-        if (depth > 10 || remaining <= 0) return;
-        AutomationElement? child;
-        try { child = TreeWalker.ControlViewWalker.GetFirstChild(parent); }
-        catch { return; }
-
-        var budget = remaining;
-        while (child is not null && budget > 0)
-        {
-            AutomationElement? next = null;
-            try { next = TreeWalker.ControlViewWalker.GetNextSibling(child); } catch { }
-
-            try
-            {
-                var current = child.Current;
-                if (!current.IsOffscreen)
-                {
-                    var bounds = current.BoundingRectangle;
-                    if (!bounds.IsEmpty && bounds.Width >= 4 && bounds.Height >= 4 &&
-                        bounds.IntersectsWith(windowBounds))
-                    {
-                        // Clip to the owner window so hover outlines never spill
-                        // across monitors incorrectly.
-                        var clipped = Rect.Intersect(bounds, windowBounds);
-                        if (!clipped.IsEmpty && clipped.Width >= 3 && clipped.Height >= 3)
-                        {
-                            var name = current.Name;
-                            if (string.IsNullOrWhiteSpace(name))
-                                name = ShortControlType(current.ControlType);
-                            if (name.Length > 48) name = name[..45] + "...";
-
-                            // Skip near-duplicates of the whole window chrome.
-                            if (!NearlyEqual(clipped, windowBounds))
-                            {
-                                destination.Add(new CachedRegion(
-                                    clipped, name, IsElement: true, zOrder, depth, window));
-                                budget--;
-                            }
-
-                            CollectElements(child, windowBounds, window, zOrder, depth + 1, destination, budget);
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Provider may disappear mid-walk.
-            }
-
-            child = next;
-        }
-    }
-
-    private static IReadOnlyList<CachedRegion> HitTest(Point screenPoint, bool includeElements)
-    {
-        IReadOnlyList<CachedRegion> snapshot;
-        lock (Sync) snapshot = _cache;
-        if (snapshot.Count == 0) return Array.Empty<CachedRegion>();
-
-        // Top-most top-level window under the pointer (lowest ZOrder among windows).
-        CachedRegion? topWindow = null;
-        foreach (var region in snapshot)
-        {
-            if (region.IsElement) continue;
             if (!region.Bounds.Contains(screenPoint)) continue;
-            if (topWindow is null || region.ZOrder < topWindow.ZOrder)
-                topWindow = region;
+            if (top is null || region.ZOrder < top.ZOrder)
+                top = region;
         }
-
-        if (topWindow is null) return Array.Empty<CachedRegion>();
-
-        var hits = new List<CachedRegion> { topWindow };
-        if (!includeElements) return hits;
-
-        foreach (var region in snapshot)
-        {
-            if (!region.IsElement || region.Window != topWindow.Window) continue;
-            if (!region.Bounds.Contains(screenPoint)) continue;
-            if (hits.Any(existing => NearlyEqual(existing.Bounds, region.Bounds))) continue;
-            hits.Add(region);
-        }
-
-        // Window first, then larger containers, then the deepest / smallest control.
-        // Default hover index uses the last entry (deepest).
-        hits.Sort((left, right) =>
-        {
-            if (left.IsElement != right.IsElement)
-                return left.IsElement ? 1 : -1;
-            var areaCompare = (right.Bounds.Width * right.Bounds.Height)
-                .CompareTo(left.Bounds.Width * left.Bounds.Height);
-            if (areaCompare != 0) return areaCompare;
-            return left.Depth.CompareTo(right.Depth);
-        });
-
-        return hits;
+        return top;
     }
 
     private static bool IsEligibleWindow(IntPtr hwnd, IntPtr excludedOverlayHwnd)
@@ -244,10 +257,9 @@ internal static class ElementDetectionService
         NativeMethods.GetClassName(hwnd, className, className.Capacity);
         var name = className.ToString();
         if (name is "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "Progman" or "WorkerW" or
-            "Windows.UI.Core.CoreWindow") // UWP shell host noise
+            "Windows.UI.Core.CoreWindow")
             return false;
 
-        // Cloaked / invisible shell windows (Win10+).
         if (IsCloaked(hwnd)) return false;
         return true;
     }
@@ -256,7 +268,6 @@ internal static class ElementDetectionService
     {
         try
         {
-            // DWMWA_CLOAKED = 14
             if (NativeMethods.DwmGetWindowAttribute(hwnd, 14, out var cloaked, sizeof(int)) == 0)
                 return cloaked != 0;
         }
@@ -275,12 +286,12 @@ internal static class ElementDetectionService
         {
             var length = NativeMethods.GetWindowTextLength(hwnd);
             if (length <= 0) return "Window";
-            var buffer = new StringBuilder(Math.Min(length + 1, 128));
+            var buffer = new StringBuilder(Math.Min(length + 1, 96));
             if (NativeMethods.GetWindowText(hwnd, buffer, buffer.Capacity) > 0 &&
                 !string.IsNullOrWhiteSpace(buffer.ToString()))
             {
                 var title = buffer.ToString().Trim();
-                return title.Length > 48 ? title[..45] + "..." : title;
+                return title.Length > 40 ? title[..37] + "..." : title;
             }
         }
         catch { }

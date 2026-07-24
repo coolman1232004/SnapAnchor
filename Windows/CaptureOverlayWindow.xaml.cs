@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using SnapAnchor.Services;
 using SnapAnchor.Models;
 using SnapAnchor.Controls;
@@ -126,11 +127,11 @@ public partial class CaptureOverlayWindow : Window
             _overlayHandle = new WindowInteropHelper(this).Handle;
             NativeMethods.SetWindowDisplayAffinity(_overlayHandle, NativeMethods.WdaExcludeFromCapture);
             _initialized = true;
-            // Pre-build window/UI geometry before hover (Snow Shot–style cache).
-            // Live FromPoint cannot see through this full-screen overlay.
+            // Window rectangles only (milliseconds). UI Automation elements are
+            // loaded lazily per hovered window — never a full-desktop tree walk.
             if (_settings.ShowElementDetection != false && !_colorPickerMode)
             {
-                try { ElementDetectionService.RebuildCache(_overlayHandle); }
+                try { ElementDetectionService.RebuildWindowCache(_overlayHandle); }
                 catch { /* detection remains best-effort */ }
             }
             PositionFloatingPanels();
@@ -146,7 +147,8 @@ public partial class CaptureOverlayWindow : Window
                     UpdateColorMagnifier(Mouse.GetPosition(OverlayCanvas));
                 });
             else if (_settings.ShowElementDetection != false)
-                Dispatcher.BeginInvoke(() => UpdateDetectedRegion(Mouse.GetPosition(OverlayCanvas)));
+                Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                    () => UpdateDetectedRegion(Mouse.GetPosition(OverlayCanvas)));
         };
         Closed += (_, _) =>
         {
@@ -270,6 +272,8 @@ public partial class CaptureOverlayWindow : Window
     private bool ColorMagnifierEnabled =>
         _settings.EnableColorMagnifier || _colorPickerMode;
 
+    private long _lastMagnifierTick;
+
     private void UpdateColorMagnifier(Point overlayPoint)
     {
         if (!ColorMagnifierEnabled || _annotationMode || _recordingRunning || _ocrAreaSelectionMode)
@@ -278,11 +282,25 @@ public partial class CaptureOverlayWindow : Window
             return;
         }
 
+        // Pixel sampling is the second-heaviest hot-path cost; cap refresh rate.
+        var now = Environment.TickCount64;
+        if (now - _lastMagnifierTick < 24 && _colorMagnifier.Visibility == Visibility.Visible)
+        {
+            // Still reposition the existing lens without re-sampling every pixel.
+            PlaceColorMagnifier(overlayPoint);
+            return;
+        }
+        _lastMagnifierTick = now;
+
         _colorMagnifier.UpdateFromCapture(_screen, overlayPoint, ActualWidth, ActualHeight);
         _colorMagnifier.Visibility = Visibility.Visible;
+        PlaceColorMagnifier(overlayPoint);
+    }
+
+    private void PlaceColorMagnifier(Point overlayPoint)
+    {
         _colorMagnifier.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var size = _colorMagnifier.DesiredSize;
-        // Keep the lens near the cursor without covering the sampled pixel.
         var left = overlayPoint.X + 22;
         var top = overlayPoint.Y + 22;
         if (left + size.Width > ActualWidth - 8)
@@ -446,16 +464,27 @@ public partial class CaptureOverlayWindow : Window
             ? new Point(cursor.X, cursor.Y)
             : OverlayToScreen(overlayPoint);
 
-        // Geometry-only cache queries are cheap; still skip tiny jitter.
+        // Skip tiny jitter; full geometry hit-tests are cheap, layout is not.
         var movedLittle = !double.IsNaN(_lastDetectionScreenPoint.X) &&
-            Math.Abs(screenPoint.X - _lastDetectionScreenPoint.X) < 1.5 &&
-            Math.Abs(screenPoint.Y - _lastDetectionScreenPoint.Y) < 1.5;
-        if (movedLittle && _detectionCandidates.Count > 0 && _detectionClock.ElapsedMilliseconds < 12)
+            Math.Abs(screenPoint.X - _lastDetectionScreenPoint.X) < 2 &&
+            Math.Abs(screenPoint.Y - _lastDetectionScreenPoint.Y) < 2;
+        if (movedLittle && _detectionCandidates.Count > 0 && _detectionClock.ElapsedMilliseconds < 16)
+            return;
+
+        // While still inside the currently lit region, avoid re-layout every pixel.
+        if (_detectionCandidates.Count > 0 &&
+            !_detectedSelection.IsEmpty &&
+            _detectedSelection.Contains(overlayPoint) &&
+            _detectionClock.ElapsedMilliseconds < 40 &&
+            !_detectElements)
             return;
 
         _lastDetectionOverlayPoint = overlayPoint;
         _lastDetectionScreenPoint = screenPoint;
         _detectionClock.Restart();
+
+        // Window mode: pure geometry. Element mode may lazily expand one window
+        // the first time it is hovered (budgeted); subsequent moves stay geometric.
         _detectionCandidates = ElementDetectionService.DetectHierarchy(screenPoint, _overlayHandle, _detectElements);
         if (_detectionCandidates.Count == 0)
         {
@@ -463,7 +492,6 @@ public partial class CaptureOverlayWindow : Window
             return;
         }
 
-        // Prefer the deepest UI element when element mode is on; otherwise the window.
         _detectionIndex = _detectElements
             ? _detectionCandidates.Count - 1
             : 0;
@@ -478,23 +506,36 @@ public partial class CaptureOverlayWindow : Window
 
         var topLeft = ScreenToOverlay(new Point(detected.Bounds.Left, detected.Bounds.Top));
         var bottomRight = ScreenToOverlay(new Point(detected.Bounds.Right, detected.Bounds.Bottom));
-        _detectedSelection = Rect.Intersect(
+        var next = Rect.Intersect(
             new Rect(0, 0, ActualWidth, ActualHeight),
             new Rect(topLeft, bottomRight));
-        if (_detectedSelection.IsEmpty || _detectedSelection.Width < 2 || _detectedSelection.Height < 2)
+        if (next.IsEmpty || next.Width < 2 || next.Height < 2)
         {
             ClearDetectionHighlight();
             return;
         }
 
-        // Dim everything except the detected region so that region looks like the
-        // normal screen (same approach as the finished selection spotlight mask).
-        RenderSpotlightMask(_detectedSelection);
-        Canvas.SetLeft(DetectionRect, _detectedSelection.X);
-        Canvas.SetTop(DetectionRect, _detectedSelection.Y);
-        DetectionRect.Width = _detectedSelection.Width;
-        DetectionRect.Height = _detectedSelection.Height;
-        DetectionRect.Visibility = Visibility.Visible;
+        // Skip mask rebuild when the lit region did not meaningfully change.
+        var sameRegion = !_detectedSelection.IsEmpty &&
+            Math.Abs(_detectedSelection.X - next.X) < 1 &&
+            Math.Abs(_detectedSelection.Y - next.Y) < 1 &&
+            Math.Abs(_detectedSelection.Width - next.Width) < 1 &&
+            Math.Abs(_detectedSelection.Height - next.Height) < 1;
+        _detectedSelection = next;
+        if (!sameRegion)
+        {
+            RenderSpotlightMask(_detectedSelection);
+            Canvas.SetLeft(DetectionRect, _detectedSelection.X);
+            Canvas.SetTop(DetectionRect, _detectedSelection.Y);
+            DetectionRect.Width = _detectedSelection.Width;
+            DetectionRect.Height = _detectedSelection.Height;
+            DetectionRect.Visibility = Visibility.Visible;
+        }
+        else if (DetectionRect.Visibility != Visibility.Visible)
+        {
+            DetectionRect.Visibility = Visibility.Visible;
+        }
+
         DetectionModeText.Text = $"{L("Mode")}: {L(_detectElements ? "UI element" : "Window")}   •   {_detectionIndex + 1}/{_detectionCandidates.Count}   •   {detected.Name}";
     }
 

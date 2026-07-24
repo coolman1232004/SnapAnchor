@@ -12,7 +12,7 @@
 <p align="center">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet">
-  <img alt="Current version" src="https://img.shields.io/badge/version-2.1.17-292524">
+  <img alt="Current version" src="https://img.shields.io/badge/version-2.1.18-292524">
   <img alt="Local first" src="https://img.shields.io/badge/privacy-local--first-57534E">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-E7E5E4">
 </p>
@@ -149,7 +149,7 @@ Run the regression suite:
 Create the portable ZIP and installer:
 
 ```powershell
-.\packaging\Build-Packages.ps1 -Version 2.1.17
+.\packaging\Build-Packages.ps1 -Version 2.1.18
 ```
 
 Generated packages are written to `dist\`. That directory is intentionally excluded from Git and should be uploaded as GitHub Release assets.

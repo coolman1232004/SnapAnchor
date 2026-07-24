@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.18] - 2026-07-24
+
+- Fixed severe lag when element detection was enabled: capture no longer walks every window's UI Automation tree on open
+- Window outlines use a **millisecond** top-level window cache; UI elements load **lazily** for the hovered window only on a background dispatcher priority
+- Mouse move does geometry hit-tests only (no live UIA); spotlight layout skips unchanged regions
+- Colour magnifier sampling is rate-limited so it no longer competes with detection on every pixel
+
 ## [2.1.17] - 2026-07-24
 
 - Fixed window/UI-element detection: hover no longer uses live `FromPoint` (which only hit SnapAnchor's own full-screen overlay)
