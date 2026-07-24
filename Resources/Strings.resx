@@ -951,6 +951,21 @@
   <data name="One or more selected shortcuts are already used by Windows or another app" xml:space="preserve">
     <value>One or more selected shortcuts are already used by Windows or another app</value>
   </data>
+  <data name="Search title, tags, OCR text, barcode, source, size, or date" xml:space="preserve">
+    <value>Search title, tags, OCR text, barcode, source, size, or date</value>
+  </data>
+  <data name="Shortcut conflict" xml:space="preserve">
+    <value>Shortcut conflict</value>
+  </data>
+  <data name="One or more SnapAnchor shortcuts could not be registered because Windows or another app already uses them. Open Preferences → Hotkeys to pick free keys." xml:space="preserve">
+    <value>One or more SnapAnchor shortcuts could not be registered because Windows or another app already uses them. Open Preferences → Hotkeys to pick free keys.</value>
+  </data>
+  <data name="Recording stopped unexpectedly. Check that the selected region is still valid and try again." xml:space="preserve">
+    <value>Recording stopped unexpectedly. Check that the selected region is still valid and try again.</value>
+  </data>
+  <data name="Tip: try a smaller region, disable system audio, or switch MP4/GIF in Preferences → Recording." xml:space="preserve">
+    <value>Tip: try a smaller region, disable system audio, or switch MP4/GIF in Preferences → Recording.</value>
+  </data>
   <data name="{0} pins" xml:space="preserve">
     <value>{0} pins</value>
   </data>

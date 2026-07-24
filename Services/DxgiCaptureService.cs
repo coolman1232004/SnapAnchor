@@ -76,29 +76,12 @@ internal static class DxgiCaptureService
 
         try
         {
-            var featureLevels = new[] { 0xb000 /* 11_0 */, 0xa100 /* 10_1 */, 0xa000 /* 10_0 */ };
-            var hr = D3D11CreateDevice(
-                IntPtr.Zero,
-                1 /* D3D_DRIVER_TYPE_HARDWARE */,
-                IntPtr.Zero,
-                CreateDeviceBgraSupport,
-                featureLevels,
-                featureLevels.Length,
-                7,
-                out device,
-                out _,
-                out context);
-            if (hr < 0 || device == IntPtr.Zero) return false;
+            // Bind D3D device to the adapter that owns this monitor (multi-GPU safe).
+            if (!TryCreateDeviceForMonitor(monitorBounds, out device, out context, out output) ||
+                device == IntPtr.Zero || output == IntPtr.Zero)
+                return false;
 
-            hr = Marshal.QueryInterface(device, ref IidDxgiDevice, out dxgiDevice);
-            if (hr < 0 || dxgiDevice == IntPtr.Zero) return false;
-
-            hr = IDXGIDevice_GetParent(dxgiDevice, ref IidDxgiAdapter, out adapter);
-            if (hr < 0 || adapter == IntPtr.Zero) return false;
-
-            if (!TryFindOutput(adapter, monitorBounds, out output) || output == IntPtr.Zero) return false;
-
-            hr = Marshal.QueryInterface(output, ref IidDxgiOutput1, out output1);
+            var hr = Marshal.QueryInterface(output, ref IidDxgiOutput1, out output1);
             if (hr < 0 || output1 == IntPtr.Zero) return false;
 
             hr = IDXGIOutput1_DuplicateOutput(output1, device, out duplication);
@@ -193,6 +176,117 @@ internal static class DxgiCaptureService
         }
     }
 
+    private static bool TryCreateDeviceForMonitor(
+        Drawing.Rectangle monitorBounds,
+        out IntPtr device,
+        out IntPtr context,
+        out IntPtr output)
+    {
+        device = IntPtr.Zero;
+        context = IntPtr.Zero;
+        output = IntPtr.Zero;
+        var factory = IntPtr.Zero;
+        try
+        {
+            var hr = CreateDXGIFactory1(ref IidDxgiFactory1, out factory);
+            if (hr < 0 || factory == IntPtr.Zero)
+                return TryCreateDeviceDefaultAdapter(monitorBounds, out device, out context, out output);
+
+            var featureLevels = new[] { 0xb000, 0xa100, 0xa000 };
+            for (uint adapterIndex = 0; ; adapterIndex++)
+            {
+                var adapter = IntPtr.Zero;
+                hr = IDXGIFactory_EnumAdapters(factory, adapterIndex, out adapter);
+                if (hr < 0 || adapter == IntPtr.Zero) break;
+                try
+                {
+                    if (!TryFindOutput(adapter, monitorBounds, out var foundOutput) || foundOutput == IntPtr.Zero)
+                        continue;
+
+                    // D3D_DRIVER_TYPE_UNKNOWN (0) when an adapter is supplied.
+                    hr = D3D11CreateDevice(
+                        adapter,
+                        0,
+                        IntPtr.Zero,
+                        CreateDeviceBgraSupport,
+                        featureLevels,
+                        featureLevels.Length,
+                        7,
+                        out device,
+                        out _,
+                        out context);
+                    if (hr < 0 || device == IntPtr.Zero)
+                    {
+                        SafeRelease(foundOutput);
+                        device = IntPtr.Zero;
+                        context = IntPtr.Zero;
+                        continue;
+                    }
+
+                    output = foundOutput;
+                    return true;
+                }
+                finally
+                {
+                    SafeRelease(adapter);
+                }
+            }
+
+            return TryCreateDeviceDefaultAdapter(monitorBounds, out device, out context, out output);
+        }
+        finally
+        {
+            SafeRelease(factory);
+        }
+    }
+
+    private static bool TryCreateDeviceDefaultAdapter(
+        Drawing.Rectangle monitorBounds,
+        out IntPtr device,
+        out IntPtr context,
+        out IntPtr output)
+    {
+        device = IntPtr.Zero;
+        context = IntPtr.Zero;
+        output = IntPtr.Zero;
+        var featureLevels = new[] { 0xb000, 0xa100, 0xa000 };
+        var hr = D3D11CreateDevice(
+            IntPtr.Zero,
+            1 /* HARDWARE */,
+            IntPtr.Zero,
+            CreateDeviceBgraSupport,
+            featureLevels,
+            featureLevels.Length,
+            7,
+            out device,
+            out _,
+            out context);
+        if (hr < 0 || device == IntPtr.Zero) return false;
+
+        var dxgiDevice = IntPtr.Zero;
+        var adapter = IntPtr.Zero;
+        try
+        {
+            hr = Marshal.QueryInterface(device, ref IidDxgiDevice, out dxgiDevice);
+            if (hr < 0 || dxgiDevice == IntPtr.Zero) return false;
+            hr = IDXGIDevice_GetParent(dxgiDevice, ref IidDxgiAdapter, out adapter);
+            if (hr < 0 || adapter == IntPtr.Zero) return false;
+            return TryFindOutput(adapter, monitorBounds, out output) && output != IntPtr.Zero;
+        }
+        finally
+        {
+            SafeRelease(adapter);
+            SafeRelease(dxgiDevice);
+            if (output == IntPtr.Zero)
+            {
+                SafeRelease(context);
+                SafeRelease(device);
+                device = IntPtr.Zero;
+                context = IntPtr.Zero;
+            }
+        }
+    }
+
     private static bool TryFindOutput(IntPtr adapter, Drawing.Rectangle monitorBounds, out IntPtr output)
     {
         output = IntPtr.Zero;
@@ -211,11 +305,22 @@ internal static class DxgiCaptureService
                         desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left,
                         desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top);
                     if (bounds == monitorBounds ||
-                        Drawing.Rectangle.Intersect(bounds, monitorBounds).Equals(monitorBounds))
+                        Drawing.Rectangle.Intersect(bounds, monitorBounds).Equals(monitorBounds) ||
+                        Drawing.Rectangle.Intersect(bounds, monitorBounds).Width > 0)
                     {
-                        output = candidate;
-                        candidate = IntPtr.Zero;
-                        return true;
+                        // Prefer exact monitor match; accept overlapping output on multi-GPU.
+                        if (bounds == monitorBounds ||
+                            Drawing.Rectangle.Intersect(bounds, monitorBounds).Equals(monitorBounds))
+                        {
+                            output = candidate;
+                            candidate = IntPtr.Zero;
+                            return true;
+                        }
+                        if (output == IntPtr.Zero)
+                        {
+                            output = candidate;
+                            candidate = IntPtr.Zero;
+                        }
                     }
                 }
             }
@@ -224,7 +329,7 @@ internal static class DxgiCaptureService
                 SafeRelease(candidate);
             }
         }
-        return false;
+        return output != IntPtr.Zero;
     }
 
     private static BitmapSource ToBitmapSource(Drawing.Bitmap bitmap)
@@ -251,6 +356,7 @@ internal static class DxgiCaptureService
     private static Guid IidDxgiAdapter = new("2411e7e1-12ac-4ccf-bd14-9798e8534dc0");
     private static Guid IidDxgiOutput1 = new("00cddea8-939b-4b83-a340-a685226666cc");
     private static Guid IidD3D11Texture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
+    private static Guid IidDxgiFactory1 = new("770aae78-f26f-4dba-a829-253c83d1b387");
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativeRect
@@ -326,6 +432,18 @@ internal static class DxgiCaptureService
         out IntPtr device,
         out int featureLevel,
         out IntPtr immediateContext);
+
+    [DllImport("dxgi.dll", ExactSpelling = true)]
+    private static extern int CreateDXGIFactory1(ref Guid riid, out IntPtr factory);
+
+    private static int IDXGIFactory_EnumAdapters(IntPtr factory, uint index, out IntPtr adapter)
+    {
+        adapter = IntPtr.Zero;
+        var vtable = Marshal.ReadIntPtr(factory);
+        // IDXGIFactory::EnumAdapters is slot 7 (IUnknown 0-2, IDXGIObject 3-6).
+        var method = Marshal.GetDelegateForFunctionPointer<EnumAdaptersDelegate>(Marshal.ReadIntPtr(vtable, 7 * IntPtr.Size));
+        return method(factory, index, out adapter);
+    }
 
     private static int IDXGIDevice_GetParent(IntPtr device, ref Guid riid, out IntPtr parent)
     {
@@ -413,6 +531,9 @@ internal static class DxgiCaptureService
         var method = Marshal.GetDelegateForFunctionPointer<UnmapDelegate>(Marshal.ReadIntPtr(vtable, 15 * IntPtr.Size));
         method(context, resource, subresource);
     }
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int EnumAdaptersDelegate(IntPtr self, uint index, out IntPtr adapter);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int GetParentDelegate(IntPtr self, ref Guid riid, out IntPtr parent);

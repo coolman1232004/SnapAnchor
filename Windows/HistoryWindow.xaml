@@ -114,9 +114,10 @@
                     <ColumnDefinition Width="150"/>
                     <ColumnDefinition Width="150"/>
                 </Grid.ColumnDefinitions>
-                <TextBox x:Name="SearchBox" Height="38" Padding="10,7" Margin="0,0,10,0"
+                <TextBox x:Name="SearchBox" Height="36" Padding="10,7" Margin="0,0,10,0"
                          BorderBrush="#D6D3D1" BorderThickness="1" Background="White" Foreground="#1C1917"
-                         TextChanged="SearchBox_TextChanged" ToolTip="Search OCR text, barcode content, source, dimensions, or date"/>
+                         TextChanged="SearchBox_TextChanged"
+                         ToolTip="Search title, tags, OCR text, barcode, source, size, or date"/>
                 <ComboBox x:Name="SourceFilterBox" Grid.Column="1" Height="38" Margin="0,0,10,0" Padding="7,5"
                           Background="White" Foreground="#1C1917" SelectedValuePath="Tag" SelectionChanged="Filter_Changed">
                     <ComboBoxItem Content="All sources" Tag="All" IsSelected="True"/><ComboBoxItem Content="Capture" Tag="Capture"/>

@@ -951,6 +951,21 @@
   <data name="One or more selected shortcuts are already used by Windows or another app" xml:space="preserve">
     <value>一个或多个所选快捷键已被 Windows 或其他应用占用</value>
   </data>
+  <data name="Search title, tags, OCR text, barcode, source, size, or date" xml:space="preserve">
+    <value>搜索标题、标签、OCR 文本、条码、来源、尺寸或日期</value>
+  </data>
+  <data name="Shortcut conflict" xml:space="preserve">
+    <value>快捷键冲突</value>
+  </data>
+  <data name="One or more SnapAnchor shortcuts could not be registered because Windows or another app already uses them. Open Preferences → Hotkeys to pick free keys." xml:space="preserve">
+    <value>一个或多个 SnapAnchor 快捷键无法注册，因为 Windows 或其他应用已占用。请打开“偏好设置 → 快捷键”选择空闲按键。</value>
+  </data>
+  <data name="Recording stopped unexpectedly. Check that the selected region is still valid and try again." xml:space="preserve">
+    <value>录制意外停止。请确认所选区域仍然有效后重试。</value>
+  </data>
+  <data name="Tip: try a smaller region, disable system audio, or switch MP4/GIF in Preferences → Recording." xml:space="preserve">
+    <value>提示：可尝试更小区域、关闭系统音频，或在“偏好设置 → 录制”中切换 MP4/GIF。</value>
+  </data>
   <data name="{0} pins" xml:space="preserve">
     <value>{0} 个贴图</value>
   </data>

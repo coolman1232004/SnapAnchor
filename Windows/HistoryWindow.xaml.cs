@@ -21,14 +21,26 @@ public partial class HistoryWindow : Window
         var settings = SettingsService.Load();
         LocalizationService.Apply(this, settings.UiLanguage);
         AccessibilityService.Apply(this);
-        Loaded += (_, _) => Reload();
+        Loaded += (_, _) =>
+        {
+            Reload();
+            Dispatcher.BeginInvoke(() =>
+            {
+                SearchBox.Focus();
+                Keyboard.Focus(SearchBox);
+            }, System.Windows.Threading.DispatcherPriority.Input);
+        };
     }
 
     private void Reload()
     {
         var showDeleted = ShowRecycleBox.IsChecked == true;
         var records = HistoryService.List(includeDeleted: showDeleted)
-            .Where(record => record.IsDeleted == showDeleted).ToList();
+            .Where(record => record.IsDeleted == showDeleted)
+            // Favorites first, then newest — keeps power-user pins easy to re-open.
+            .OrderByDescending(record => record.IsFavorite)
+            .ThenByDescending(record => record.CreatedAt)
+            .ToList();
         _contextPreviewIds.RemoveWhere(id => records.All(record => !record.Id.Equals(id, StringComparison.OrdinalIgnoreCase) || !record.HasContext));
         var filtered = records.Where(MatchesFilters).ToList();
         HistoryList.ItemsSource = filtered.Select(record => new HistoryViewItem

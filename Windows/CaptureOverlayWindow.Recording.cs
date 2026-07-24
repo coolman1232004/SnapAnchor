@@ -92,7 +92,16 @@ public partial class CaptureOverlayWindow
         catch (Exception ex)
         {
             RestoreCaptureAppearance();
-            MessageBox.Show(this, ex.Message, L("Recording failed"), MessageBoxButton.OK, MessageBoxImage.Information);
+            var detail = string.IsNullOrWhiteSpace(ex.Message)
+                ? L("Recording stopped unexpectedly. Check that the selected region is still valid and try again.")
+                : ex.Message;
+            MessageBox.Show(
+                this,
+                detail + Environment.NewLine + Environment.NewLine +
+                L("Tip: try a smaller region, disable system audio, or switch MP4/GIF in Preferences → Recording."),
+                L("Recording failed"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
         }
         finally
         {

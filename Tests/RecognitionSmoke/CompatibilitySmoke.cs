@@ -53,6 +53,20 @@ internal static class CompatibilitySmoke
             new Rect(300, 180, 20, 20), new Size(260, 82), new Size(320, 240));
         if (edge.X < 8 || edge.Y < 8 || edge.X + 260 > 312 || edge.Y + 82 > 232)
             throw new InvalidOperationException("Toolbar placement escaped a small display.");
+        // Snug under selection when there is room (preferred gap ~2px).
+        var snug = OverlayLayoutService.PlaceBelowAndKeepVisible(
+            new Rect(40, 40, 100, 60), new Size(180, 34), new Size(800, 600), preferredGap: 2);
+        if (Math.Abs(snug.Y - 102) > 0.5)
+            throw new InvalidOperationException($"Toolbar should attach just below the selection: y={snug.Y}");
+
+        // Multi-monitor virtual union remains coherent for spanning overlays.
+        var dual = DisplayTopologyService.UnionBounds(
+        [
+            new System.Drawing.Rectangle(0, 0, 1920, 1080),
+            new System.Drawing.Rectangle(1920, -200, 2560, 1440)
+        ]);
+        if (dual.Left != 0 || dual.Top != -200 || dual.Width != 4480 || dual.Height != 1440)
+            throw new InvalidOperationException($"Multi-monitor union bounds unexpected: {dual}");
 
         var devices = new[]
         {

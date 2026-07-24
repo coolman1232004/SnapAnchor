@@ -12,7 +12,7 @@
 <p align="center">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet">
-  <img alt="Current version" src="https://img.shields.io/badge/version-2.1.21-292524">
+  <img alt="Current version" src="https://img.shields.io/badge/version-2.1.25-292524">
   <img alt="Local first" src="https://img.shields.io/badge/privacy-local--first-57534E">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-E7E5E4">
 </p>
@@ -43,6 +43,14 @@ Other useful capabilities include:
 - Privacy exclusions for SnapAnchor and selected applications during captures and recordings
 - Crash recovery, atomic settings, pin-session backup, update verification, and installer rollback
 - Command-line actions for capture, recording, pinning, drawing, history, settings, and whiteboards
+
+## Quick look
+
+| After capture | Pins dashboard | History |
+|---|---|---|
+| Compact toolbar under the selection (annotate, copy, pin, save, OCR, record) | Grouped pin manager with denser thumbnails | Searchable local history with favourites first |
+
+Typical loop: **Print Screen** → drag a region → toolbar appears under the selection → **Copy** / **Pin** / annotate → keep working.
 
 ## Download and install
 

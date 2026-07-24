@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.25] - 2026-07-24
+
+- **P0/P1 polish:** properties toolbar matches primary chrome; capture toolbar sits snug under the selection
+- DXGI multi-adapter binding for hard full-screen captures; layout extracted to `CaptureOverlayWindow.Layout.cs`
+- Annotation interiors of callouts/numbers no longer block nested drawing tools
+- Long-capture alignment skips sticky-header band for more reliable seams
+- Hotkey conflicts show a tray balloon with Preferences guidance
+- History: favourites first, search focuses on open
+- Pin manager: denser thumbnail cards
+- Recording failures show actionable tips (region / audio / format)
+- README quick-look table and version badge
+
 ## [2.1.24] - 2026-07-24
 
 - **Annotation / capture toolbar polish:** compact Snipaste-like chrome (~32–34 px)

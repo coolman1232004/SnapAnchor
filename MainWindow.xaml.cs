@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _sessionTimer;
     private readonly DispatcherTimer _desktopTimer;
     private bool _refreshingPinManager;
+    private bool _hotkeyConflictBalloonShown;
     private Guid? _lastDesktopId;
     private UpdateCheckResult? _availableUpdate;
 
@@ -138,6 +139,18 @@ public partial class MainWindow : Window
         StatusText.Text = success
             ? $"{L("Capture")}: {_captureHotkey.DisplayName}  ·  {L("Pin")}: {_pasteHotkey.DisplayName}"
             : L("One or more selected shortcuts are already used by Windows or another app");
+        if (success)
+        {
+            _hotkeyConflictBalloonShown = false;
+            return;
+        }
+        if (_hotkeyConflictBalloonShown || _trayIcon is null) return;
+        _hotkeyConflictBalloonShown = true;
+        _trayIcon.ShowBalloonTip(
+            9000,
+            L("Shortcut conflict"),
+            L("One or more SnapAnchor shortcuts could not be registered because Windows or another app already uses them. Open Preferences → Hotkeys to pick free keys."),
+            Forms.ToolTipIcon.Warning);
     }
 
     private void RefreshDefinitions()

@@ -1046,9 +1046,10 @@ internal static class Program
                 .Invoke(overlay, [overlay, up]);
             var toolbarTop = Canvas.GetTop(actionBar);
             var adjustedSelection = overlay.CurrentSelection;
+            // Preferred gap under the selection is ~2px (snug attachment).
             var returnedBelowSelection = actionBar.Visibility == Visibility.Visible &&
-                toolbarTop >= adjustedSelection.Bottom + 6 && toolbarTop <= adjustedSelection.Bottom + 10;
-            Console.WriteLine($"CAPTURE RESIZE TOOLBAR PROBE: hidden={hiddenWhileDragging}, visible={actionBar.Visibility}, top={toolbarTop:N1}, expected={adjustedSelection.Bottom + 8:N1}");
+                toolbarTop >= adjustedSelection.Bottom + 1 && toolbarTop <= adjustedSelection.Bottom + 4;
+            Console.WriteLine($"CAPTURE RESIZE TOOLBAR PROBE: hidden={hiddenWhileDragging}, visible={actionBar.Visibility}, top={toolbarTop:N1}, expected={adjustedSelection.Bottom + 2:N1}");
             overlay.Close();
             return hiddenWhileDragging && returnedBelowSelection;
         });

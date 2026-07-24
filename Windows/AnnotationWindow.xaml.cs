@@ -724,11 +724,16 @@ public partial class AnnotationEditorControl : UserControl
 
     private static bool IsInteriorOnlyHit(AnnotationItem item, Point point)
     {
-        if (item.Kind is not (AnnotationKind.Rectangle or AnnotationKind.Ellipse or AnnotationKind.Magnify or AnnotationKind.Mosaic))
+        // Large filled-ish objects should not steal hits from nested drawing tools.
+        // Borders remain selectable; Select tool still uses force:true for full hits.
+        if (item.Kind is not (AnnotationKind.Rectangle or AnnotationKind.Ellipse or AnnotationKind.Magnify
+            or AnnotationKind.Mosaic or AnnotationKind.Callout or AnnotationKind.Number))
             return false;
 
         var bounds = Bounds(item);
-        var margin = Math.Max(10, item.Thickness + 6);
+        var margin = item.Kind == AnnotationKind.Number
+            ? Math.Max(8, item.Thickness + 4)
+            : Math.Max(10, item.Thickness + 6);
         if (bounds.Width <= margin * 2 || bounds.Height <= margin * 2)
             return false;
 
@@ -740,7 +745,7 @@ public partial class AnnotationEditorControl : UserControl
 
         if (!inner.Contains(point)) return false;
 
-        if (item.Kind == AnnotationKind.Ellipse ||
+        if (item.Kind is AnnotationKind.Ellipse or AnnotationKind.Number ||
             (item.Kind == AnnotationKind.Magnify && string.Equals(item.EffectShape, "Ellipse", StringComparison.OrdinalIgnoreCase)))
         {
             var center = new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);

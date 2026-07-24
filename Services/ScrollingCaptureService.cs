@@ -194,12 +194,16 @@ internal static class ScrollingCaptureService
         if (overlap < Math.Max(24, height / 12)) return double.PositiveInfinity;
         var xMargin = Math.Min(width / 6, 28);
         var yMargin = Math.Min(overlap / 6, Math.Max(3, height / 18));
+        // Sticky app headers occupy the top of both frames equally and confuse
+        // overlap matching; bias the score toward content below that band.
+        var stickySkip = Math.Min(overlap / 4, Math.Max(12, height / 10));
+        var yStart = yMargin + stickySkip;
         var xStep = Math.Max(3, width / 180);
         var yStep = Math.Max(2, overlap / 120);
         double total = 0;
         double weightTotal = 0;
 
-        for (var y = yMargin; y < overlap - yMargin; y += yStep)
+        for (var y = yStart; y < overlap - yMargin; y += yStep)
         {
             double rowTotal = 0;
             double rowGradient = 0;
