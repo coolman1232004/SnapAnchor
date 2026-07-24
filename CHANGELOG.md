@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.21] - 2026-07-24
+
+- **P1 polish:** clearer first-run tray tip (capture, pin, record, colour picker)
+- Capture overlay hints now include a short **How to capture** guide plus shortcuts
+- Tray menu reorganised into Capture · Annotate/Record · Pins · Tools (matches README quick start)
+- Stronger defaults for new installs / pure-default profiles: annotation includes **Ellipse** and **Line**; capture actions include **OCR** and **Long capture**
+- Default capture hotkey is **Print Screen** (aligned with the README)
+- README quick-start table lists colour picker and capture-and-copy shortcuts
+
 ## [2.1.20] - 2026-07-24
 
 - Detection defaults to **smooth window spotlight** (Snow Shot–like window snap); small UI controls are optional

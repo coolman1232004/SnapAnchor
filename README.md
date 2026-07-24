@@ -12,7 +12,7 @@
 <p align="center">
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet">
-  <img alt="Current version" src="https://img.shields.io/badge/version-2.1.20-292524">
+  <img alt="Current version" src="https://img.shields.io/badge/version-2.1.21-292524">
   <img alt="Local first" src="https://img.shields.io/badge/privacy-local--first-57534E">
   <img alt="MIT license" src="https://img.shields.io/badge/license-MIT-E7E5E4">
 </p>
@@ -98,17 +98,21 @@ Get-FileHash .\SnapAnchor-Setup-win-x64.exe -Algorithm SHA256
 | Action | Default shortcut |
 |---|---:|
 | Capture a region | `Print Screen` |
+| Capture and copy | `Ctrl` + `F1` |
 | Pin clipboard content | `F3` |
 | Restore interaction with click-through pins | `Alt` + `Shift` + `P` |
 | Full-screen drawing | `Ctrl` + `Shift` + `D` |
 | Record a selected region | `Ctrl` + `Shift` + `R` |
+| Colour picker / magnifier | `Ctrl` + `Shift` + `C` |
 
 After starting a capture:
 
-1. Drag to select an area, or point at a detected window/UI element.
+1. Point at a highlighted window, or drag to select a region.
 2. Resize with the eight handles if necessary.
-3. Choose an annotation tool directly from the toolbar, or select Copy, Pin, Save, OCR, Record, or Recapture.
+3. Annotate if needed, then choose **Copy**, **Pin**, **Save**, or **OCR** (and other actions from Preferences → Toolbar).
 4. The capture is completed only when you choose an output action.
+
+Right-click the tray icon for the same capture modes, pins, whiteboards, history, and preferences.
 
 Pinned images support mouse-wheel resizing (including while their toolbar is open), `Ctrl` + wheel opacity, right-click tools, and double-click close. Preferences can change the hotkeys, toolbar layout, output folders, OCR defaults, pin behaviour, recording options, and capture hints.
 
@@ -149,7 +153,7 @@ Run the regression suite:
 Create the portable ZIP and installer:
 
 ```powershell
-.\packaging\Build-Packages.ps1 -Version 2.1.20
+.\packaging\Build-Packages.ps1 -Version 2.1.21
 ```
 
 Generated packages are written to `dist\`. That directory is intentionally excluded from Git and should be uploaded as GitHub Release assets.

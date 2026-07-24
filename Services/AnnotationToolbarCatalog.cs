@@ -22,12 +22,12 @@ internal static class AnnotationToolbarCatalog
 
     internal static readonly string[] DefaultOrder =
     [
-        "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Number", "Callout", "Eraser", "Ellipse", "Line", "Magnify"
+        "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Number", "Callout", "Eraser", "Magnify"
     ];
 
     internal static readonly string[] DefaultEnabled =
     [
-        "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Number", "Eraser"
+        "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Number", "Eraser"
     ];
 
     internal static List<string> NormalizeOrder(IEnumerable<string>? order)
@@ -74,7 +74,10 @@ internal static class CaptureToolbarCatalog
         "Cancel", "Pin", "Save", "Copy", "PinThumbnail", "QuickSave", "LongCapture", "Record", "OCR", "Recapture"
     ];
 
-    internal static readonly string[] DefaultEnabled = ["Cancel", "Pin", "Save", "Copy"];
+    internal static readonly string[] DefaultEnabled =
+    [
+        "Cancel", "Pin", "Save", "Copy", "OCR", "LongCapture"
+    ];
 
     internal static List<string> NormalizeOrder(IEnumerable<string>? order)
     {

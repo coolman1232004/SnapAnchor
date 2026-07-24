@@ -869,12 +869,13 @@ internal static class Program
             primaryToolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             textToolButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var defaultsMatch = defaults.AnnotationToolbarOrder.SequenceEqual(
-                    new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Number", "Callout", "Eraser", "Ellipse", "Line", "Magnify" }) &&
+                    new[] { "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Number", "Callout", "Eraser", "Magnify" }) &&
                 defaults.AnnotationToolbarEnabled.SequenceEqual(
-                    new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Number", "Eraser" }) &&
+                    new[] { "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Number", "Eraser" }) &&
                 defaults.CaptureToolbarOrder.SequenceEqual(
                     new[] { "Cancel", "Pin", "Save", "Copy", "PinThumbnail", "QuickSave", "LongCapture", "Record", "OCR", "Recapture" }) &&
-                defaults.CaptureToolbarEnabled.SequenceEqual(new[] { "Cancel", "Pin", "Save", "Copy" }) &&
+                defaults.CaptureToolbarEnabled.SequenceEqual(new[] { "Cancel", "Pin", "Save", "Copy", "OCR", "LongCapture" }) &&
+                defaults.CaptureHotkey == "PrintScreen" &&
                 tags.SequenceEqual(defaults.AnnotationToolbarOrder) &&
                 visibleTags.SequenceEqual(defaults.AnnotationToolbarEnabled) &&
                 new[] { "Ellipse", "Line", "Magnify", "Number", "Callout" }.All(tag => tags.Contains(tag)) &&

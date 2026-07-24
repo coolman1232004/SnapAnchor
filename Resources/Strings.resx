@@ -1499,4 +1499,11 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="Also detect small UI controls inside windows" xml:space="preserve"><value>Also detect small UI controls inside windows</value></data>
   <data name="Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture." xml:space="preserve"><value>Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture.</value></data>
   <data name="Tab                    Window / UI-element mode" xml:space="preserve"><value>Tab                    Window / UI-element mode</value></data>
+  <data name="Capture region: {0}. Pin clipboard: {1}. Record: {2}. Colour picker: {3}. Right-click this icon for every action." xml:space="preserve"><value>Capture region: {0}. Pin clipboard: {1}. Record: {2}. Colour picker: {3}. Right-click this icon for every action.</value></data>
+  <data name="How to capture" xml:space="preserve"><value>How to capture</value></data>
+  <data name="1. Point at a window, or drag to select a region" xml:space="preserve"><value>1. Point at a window, or drag to select a region</value></data>
+  <data name="2. Use the toolbar: Copy · Pin · Save · OCR" xml:space="preserve"><value>2. Use the toolbar: Copy · Pin · Save · OCR</value></data>
+  <data name="3. Esc cancels" xml:space="preserve"><value>3. Esc cancels</value></data>
+  <data name="Shortcuts" xml:space="preserve"><value>Shortcuts</value></data>
+  <data name="Mode: Window" xml:space="preserve"><value>Mode: Window</value></data>
 </root>

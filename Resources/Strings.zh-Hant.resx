@@ -1499,4 +1499,11 @@
   <data name="Also detect small UI controls inside windows" xml:space="preserve"><value>同時偵測視窗內的小型 UI 控制項</value></data>
   <data name="Optional. Loads UI Automation for the hovered window in the background. Default off for smoothness. Tab still toggles during capture." xml:space="preserve"><value>選用。在背景載入游標所在視窗的 UI Automation。預設關閉以保持流暢。截圖時仍可用 Tab 切換。</value></data>
   <data name="Tab                    Window / UI-element mode" xml:space="preserve"><value>Tab                    視窗 / UI 元素模式</value></data>
+  <data name="Capture region: {0}. Pin clipboard: {1}. Record: {2}. Colour picker: {3}. Right-click this icon for every action." xml:space="preserve"><value>擷取區域：{0}。固定剪貼簿：{1}。錄製：{2}。取色器：{3}。以滑鼠右鍵按一下此圖示可存取全部操作。</value></data>
+  <data name="How to capture" xml:space="preserve"><value>如何截圖</value></data>
+  <data name="1. Point at a window, or drag to select a region" xml:space="preserve"><value>1. 指向視窗，或拖曳選取區域</value></data>
+  <data name="2. Use the toolbar: Copy · Pin · Save · OCR" xml:space="preserve"><value>2. 使用工具列：複製 · 固定 · 儲存 · OCR</value></data>
+  <data name="3. Esc cancels" xml:space="preserve"><value>3. Esc 取消</value></data>
+  <data name="Shortcuts" xml:space="preserve"><value>快速鍵</value></data>
+  <data name="Mode: Window" xml:space="preserve"><value>模式：視窗</value></data>
 </root>

@@ -158,9 +158,13 @@
                 </Grid>
             </Border>
 
-            <Border x:Name="ShortcutHints" Width="360" Background="#F2191D24" CornerRadius="13" Padding="16,13" IsHitTestVisible="False">
+            <Border x:Name="ShortcutHints" Width="380" Background="#F2191D24" CornerRadius="13" Padding="16,13" IsHitTestVisible="False">
                 <StackPanel>
-                    <TextBlock Text="Capture shortcuts" Foreground="White" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8"/>
+                    <TextBlock Text="How to capture" Foreground="White" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,6"/>
+                    <TextBlock Text="1. Point at a window, or drag to select a region" Foreground="#E7E5E4" FontSize="12.5" Margin="0,2"/>
+                    <TextBlock Text="2. Use the toolbar: Copy · Pin · Save · OCR" Foreground="#E7E5E4" FontSize="12.5" Margin="0,2"/>
+                    <TextBlock Text="3. Esc cancels" Foreground="#E7E5E4" FontSize="12.5" Margin="0,2,0,8"/>
+                    <TextBlock Text="Shortcuts" Foreground="White" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
                     <TextBlock Text="W / A / S / D     Move cursor precisely" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock x:Name="DetectionTabHint" Text="Tab                    Window / UI-element mode" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock x:Name="DetectionWheelHint" Text="Mouse wheel      Parent / child UI element" Foreground="White" FontSize="13" Margin="0,3"/>
@@ -169,7 +173,7 @@
                     <TextBlock Text="Shift + C            Recognize and copy text" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="L                        Long scrolling screenshot" Foreground="White" FontSize="13" Margin="0,3"/>
                     <TextBlock Text="R                        Record selected region" Foreground="White" FontSize="13" Margin="0,3"/>
-                    <TextBlock x:Name="DetectionModeText" Text="Mode: UI element" Foreground="#86B7FF" FontSize="12" Margin="0,8,0,0"/>
+                    <TextBlock x:Name="DetectionModeText" Text="Mode: Window" Foreground="#86B7FF" FontSize="12" Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
 

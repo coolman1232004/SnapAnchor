@@ -9,7 +9,7 @@ public sealed class AppSettings
     internal const int CurrentSettingsSchemaVersion = 1;
 
     public int SettingsSchemaVersion { get; set; }
-    public string CaptureHotkey { get; set; } = "F1";
+    public string CaptureHotkey { get; set; } = "PrintScreen";
     public string CaptureAndCopyHotkey { get; set; } = "CtrlF1";
     public string CustomCaptureHotkey { get; set; } = "ShiftF1";
     public string DrawingHotkey { get; set; } = "CtrlShiftD";
@@ -231,12 +231,14 @@ internal static class SettingsService
         var historicalAnnotationOrders = new[]
         {
             new[] { "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Eraser", "Magnify" },
-            new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Eraser", "Ellipse", "Line", "Magnify" }
+            new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Eraser", "Ellipse", "Line", "Magnify" },
+            new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Number", "Callout", "Eraser", "Ellipse", "Line", "Magnify" }
         };
         var historicalAnnotationEnabled = new[]
         {
             new[] { "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Eraser", "Magnify" },
-            new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Eraser" }
+            new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Eraser" },
+            new[] { "Rectangle", "Arrow", "Pencil", "Marker", "Blur", "Text", "Number", "Eraser" }
         };
         var currentOrder = settings.AnnotationToolbarOrder ?? [];
         var migrateAnnotationDefault =
@@ -251,9 +253,21 @@ internal static class SettingsService
 
         var previousCaptureOrder = new[] { "Copy", "Pin", "PinThumbnail", "Save", "QuickSave", "LongCapture", "Record", "OCR", "Recapture", "Cancel" };
         var previousCaptureEnabled = settings.CaptureToolbarEnabled ?? [];
-        var migrateCaptureDefault = (settings.CaptureToolbarOrder ?? []).SequenceEqual(previousCaptureOrder, StringComparer.OrdinalIgnoreCase) &&
-            previousCaptureEnabled.Count == previousCaptureOrder.Length &&
-            previousCaptureEnabled.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(previousCaptureOrder);
+        var previousCaptureSet = previousCaptureEnabled.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var historicalCaptureOrders = new[]
+        {
+            previousCaptureOrder,
+            CaptureToolbarCatalog.DefaultOrder
+        };
+        var historicalCaptureEnabled = new[]
+        {
+            previousCaptureOrder,
+            new[] { "Cancel", "Pin", "Save", "Copy" }
+        };
+        var currentCaptureOrder = settings.CaptureToolbarOrder ?? [];
+        var migrateCaptureDefault =
+            historicalCaptureOrders.Any(order => currentCaptureOrder.SequenceEqual(order, StringComparer.OrdinalIgnoreCase)) &&
+            historicalCaptureEnabled.Any(enabled => previousCaptureSet.SetEquals(enabled));
         settings.CaptureToolbarOrder = migrateCaptureDefault
             ? CaptureToolbarCatalog.DefaultOrder.ToList()
             : CaptureToolbarCatalog.NormalizeOrder(settings.CaptureToolbarOrder);

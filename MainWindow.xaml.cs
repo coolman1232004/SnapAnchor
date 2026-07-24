@@ -516,13 +516,14 @@ public partial class MainWindow : Window
         _settings.HasSeenWelcomeTip = true;
         SettingsService.Save(_settings);
         _trayIcon.ShowBalloonTip(
-            9000,
+            12000,
             L("Welcome to SnapAnchor"),
             LocalizationService.Format(
-                "Capture: {0} · Pin clipboard: {1} · Record: {2}. Right-click the tray icon for every action.",
+                "Capture region: {0}. Pin clipboard: {1}. Record: {2}. Colour picker: {3}. Right-click this icon for every action.",
                 _captureHotkey.DisplayName,
                 _pasteHotkey.DisplayName,
-                _recordingHotkey.DisplayName),
+                _recordingHotkey.DisplayName,
+                _colorMagnifierHotkey.DisplayName),
             Forms.ToolTipIcon.Info);
     }
 
@@ -558,27 +559,22 @@ public partial class MainWindow : Window
             menu.Items.Add(updateItem);
             menu.Items.Add(new Forms.ToolStripSeparator());
         }
-        menu.Items.Add($"{L("Capture")} ({_captureHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture()));
-        menu.Items.Add($"{L("Draw on screen")} ({_drawingHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.FullScreenDraw)));
+        // Capture — matches README quick-start actions
+        menu.Items.Add($"{L("Capture region")} ({_captureHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture()));
         menu.Items.Add($"{L("Capture and copy")} ({_captureAndCopyHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.CopyOnSelection)));
-        menu.Items.Add($"{L("Custom capture")} ({_customCaptureHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(OpenCustomCapture));
-        menu.Items.Add($"{L("Record region")} ({_recordingHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.RecordOnSelection)));
-        menu.Items.Add($"{L("Colour picker")} ({_colorMagnifierHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.ColorPicker)));
         menu.Items.Add(L("Capture active window"), null, (_, _) => Dispatcher.Invoke(CaptureActiveWindow));
         menu.Items.Add(L("Capture full screen"), null, (_, _) => Dispatcher.Invoke(CaptureFullScreen));
+        menu.Items.Add($"{L("Custom capture")} ({_customCaptureHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(OpenCustomCapture));
+        menu.Items.Add(L("Repeat last region"), null, (_, _) => Dispatcher.Invoke(RepeatLastRegion));
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        // Annotate / record / colour
+        menu.Items.Add($"{L("Draw on screen")} ({_drawingHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.FullScreenDraw)));
+        menu.Items.Add($"{L("Record region")} ({_recordingHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.RecordOnSelection)));
+        menu.Items.Add($"{L("Colour picker")} ({_colorMagnifierHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(() => StartCapture(CaptureCompletionMode.ColorPicker)));
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        // Pins
         menu.Items.Add($"{L("Pin clipboard")} ({_pasteHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(PinClipboard));
         menu.Items.Add($"{L("Hide/show all pins")} ({_togglePinsHotkey.DisplayName})", null, (_, _) => Dispatcher.Invoke(PinnedImageWindow.ToggleAllVisibility));
-        menu.Items.Add(L("Repeat last region"), null, (_, _) => Dispatcher.Invoke(RepeatLastRegion));
-        menu.Items.Add(L("Whiteboard"), null, (_, _) => Dispatcher.Invoke(() => OpenWhiteboard(false)));
-        menu.Items.Add(L("Transparent whiteboard"), null, (_, _) => Dispatcher.Invoke(() => OpenWhiteboard(true)));
-        var disableItem = new Forms.ToolStripMenuItem(L("Disable hotkeys")) { Checked = !_hotkeysEnabled, CheckOnClick = true };
-        disableItem.Click += (_, _) => Dispatcher.Invoke(() =>
-        {
-            _hotkeysEnabled = !disableItem.Checked;
-            UpdateHotkeyStatus(RegisterAllHotkeys());
-        });
-        menu.Items.Add(disableItem);
-        menu.Items.Add(new Forms.ToolStripSeparator());
         var images = new Forms.ToolStripMenuItem(L("Pins"));
         images.DropDownItems.Add(L("Hide/show all"), null, (_, _) => Dispatcher.Invoke(PinnedImageWindow.ToggleAllVisibility));
         images.DropDownItems.Add(L("Restore click interaction"), null, (_, _) => Dispatcher.Invoke(PinnedImageWindow.RestoreInteractions));
@@ -594,10 +590,21 @@ public partial class MainWindow : Window
         images.DropDownItems.Add(groups);
         images.DropDownItems.Add(L("Solo selected"), null, (_, _) => Dispatcher.Invoke(PinnedImageWindow.ToggleSolo));
         menu.Items.Add(images);
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        // Tools
+        menu.Items.Add(L("Whiteboard"), null, (_, _) => Dispatcher.Invoke(() => OpenWhiteboard(false)));
+        menu.Items.Add(L("Transparent whiteboard"), null, (_, _) => Dispatcher.Invoke(() => OpenWhiteboard(true)));
         menu.Items.Add(L("Capture history…"), null, (_, _) => Dispatcher.Invoke(OpenHistory));
         menu.Items.Add(L("Check for updates…"), null, (_, _) => Dispatcher.Invoke(() => _ = CheckForUpdatesAsync()));
         menu.Items.Add(L("Preferences…"), null, (_, _) => Dispatcher.Invoke(OpenPreferences));
         menu.Items.Add(L("Open SnapAnchor"), null, (_, _) => Dispatcher.Invoke(ShowDashboard));
+        var disableItem = new Forms.ToolStripMenuItem(L("Disable hotkeys")) { Checked = !_hotkeysEnabled, CheckOnClick = true };
+        disableItem.Click += (_, _) => Dispatcher.Invoke(() =>
+        {
+            _hotkeysEnabled = !disableItem.Checked;
+            UpdateHotkeyStatus(RegisterAllHotkeys());
+        });
+        menu.Items.Add(disableItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(L("Exit"), null, (_, _) => Dispatcher.Invoke(ExitApplication));
     }
