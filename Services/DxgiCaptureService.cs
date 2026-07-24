@@ -47,7 +47,7 @@ internal static class DxgiCaptureService
                 }
 
                 if (!covered) return false;
-                if (includeCursor) DrawCursor(graphics, bounds);
+                if (includeCursor) CaptureService.DrawCursor(graphics, bounds);
             }
 
             image = ToBitmapSource(assembled);
@@ -232,40 +232,13 @@ internal static class DxgiCaptureService
         var handle = bitmap.GetHbitmap();
         try
         {
-            var source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+            // NormalizeDpi96 / HDR / exclusions run once in CaptureService.FinalizeCapture.
+            return System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
                 handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-            return CaptureService.NormalizeDpi96(source);
         }
         finally
         {
             NativeMethods.DeleteObject(handle);
-        }
-    }
-
-    private static void DrawCursor(Drawing.Graphics graphics, Drawing.Rectangle bounds)
-    {
-        var info = new NativeMethods.CursorInfo { Size = Marshal.SizeOf<NativeMethods.CursorInfo>() };
-        if (!NativeMethods.GetCursorInfo(ref info) || (info.Flags & NativeMethods.CursorShowing) == 0 || info.Cursor == IntPtr.Zero) return;
-        var hotspotX = 0;
-        var hotspotY = 0;
-        if (NativeMethods.GetIconInfo(info.Cursor, out var iconInfo))
-        {
-            hotspotX = iconInfo.HotspotX;
-            hotspotY = iconInfo.HotspotY;
-            if (iconInfo.MaskBitmap != IntPtr.Zero) NativeMethods.DeleteObject(iconInfo.MaskBitmap);
-            if (iconInfo.ColorBitmap != IntPtr.Zero) NativeMethods.DeleteObject(iconInfo.ColorBitmap);
-        }
-        var dc = graphics.GetHdc();
-        try
-        {
-            NativeMethods.DrawIconEx(dc,
-                info.ScreenPosition.X - bounds.Left - hotspotX,
-                info.ScreenPosition.Y - bounds.Top - hotspotY,
-                info.Cursor, 0, 0, 0, IntPtr.Zero, NativeMethods.DiNormal);
-        }
-        finally
-        {
-            graphics.ReleaseHdc(dc);
         }
     }
 

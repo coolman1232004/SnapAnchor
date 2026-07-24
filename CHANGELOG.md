@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.23] - 2026-07-24
+
+- **Code-judo follow-up to P2 review:** still capture is **GDI-first**; DXGI only retries when opted in and GDI looks mostly blank
+- Prefer DXGI preference defaults **off**; label clarifies retry-on-blank behaviour
+- Shared `AccessibilityService.TryHandleToolbarNavigation` (F6 / arrows) used by capture, annotation, and pin windows
+- Annotation tool keys live on `AnnotationToolbarCatalog.ToolForKey`
+- Shared `CaptureService.DrawCursor`; single finalize path (normalize → HDR → exclusions)
+- Detection highlight path moved to `CaptureOverlayWindow.Detection.cs`
+- Smoke: GDI and DXGI-opt-in capture budgets + tool key map
+
 ## [2.1.22] - 2026-07-24
 
 - **P2 quality / trust:** keyboard accessibility for capture and pin toolbars (F6 focuses tools, arrows move focus, visible focus ring, screen-reader names from tooltips)

@@ -1,3 +1,5 @@
+using System.Windows.Input;
+
 namespace SnapAnchor.Services;
 
 internal readonly record struct AnnotationToolbarDefinition(string Key, string Label);
@@ -29,6 +31,24 @@ internal static class AnnotationToolbarCatalog
     [
         "Rectangle", "Ellipse", "Arrow", "Line", "Pencil", "Marker", "Blur", "Text", "Number", "Eraser"
     ];
+
+    /// <summary>Keyboard accelerator → toolbar tool key (when not typing in a text editor).</summary>
+    internal static string? ToolForKey(Key key) => key switch
+    {
+        Key.R => "Rectangle",
+        Key.O => "Ellipse",
+        Key.A => "Arrow",
+        Key.L => "Line",
+        Key.P => "Pencil",
+        Key.M => "Marker",
+        Key.B => "Blur",
+        Key.T => "Text",
+        Key.N => "Number",
+        Key.W => "Callout",
+        Key.E => "Eraser",
+        Key.G => "Magnify",
+        _ => null
+    };
 
     internal static List<string> NormalizeOrder(IEnumerable<string>? order)
     {

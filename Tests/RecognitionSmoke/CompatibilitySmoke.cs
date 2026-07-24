@@ -110,16 +110,46 @@ internal static class CompatibilitySmoke
             // expected
         }
 
-        // Prefer DXGI is on by default; still captures through GDI fallback.
+        // GDI is the default hot path; PreferDxgi is opt-in retry-on-blank only.
         var defaults = SettingsService.Normalize(new AppSettings());
-        if (!defaults.PreferDxgiCapture)
-            throw new InvalidOperationException("PreferDxgiCapture should default to true.");
-        var sample = CaptureService.CaptureScreenRect(
-            new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, 32, 32));
-        if (sample.PixelWidth < 1 || sample.PixelHeight < 1)
-            throw new InvalidOperationException("Capture pipeline returned an empty sample.");
+        if (defaults.PreferDxgiCapture)
+            throw new InvalidOperationException("PreferDxgiCapture should default to false (GDI-first).");
 
-        Console.WriteLine($"COMPATIBILITY: mixed DPI, portrait, negative coordinates, overlay mapping, DXGI/GDI capture, remote-session diagnostics, audio fallback and feature-matched stitching verified");
+        var sampleRect = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, 32, 32);
+        var offWatch = System.Diagnostics.Stopwatch.StartNew();
+        var sampleOff = CaptureService.CaptureScreenRect(sampleRect);
+        offWatch.Stop();
+        if (sampleOff.PixelWidth < 1 || sampleOff.PixelHeight < 1)
+            throw new InvalidOperationException("GDI-first capture returned an empty sample.");
+        if (offWatch.ElapsedMilliseconds > 2500)
+            throw new InvalidOperationException($"GDI capture budget exceeded: {offWatch.ElapsedMilliseconds} ms.");
+
+        var previous = SettingsService.Load();
+        try
+        {
+            previous.PreferDxgiCapture = true;
+            SettingsService.Save(previous);
+            var onWatch = System.Diagnostics.Stopwatch.StartNew();
+            var sampleOn = CaptureService.CaptureScreenRect(sampleRect);
+            onWatch.Stop();
+            if (sampleOn.PixelWidth < 1 || sampleOn.PixelHeight < 1)
+                throw new InvalidOperationException("DXGI-opt-in capture returned an empty sample.");
+            // When GDI is non-blank, DXGI should not run; still allow a generous budget.
+            if (onWatch.ElapsedMilliseconds > 4000)
+                throw new InvalidOperationException($"DXGI-opt-in capture budget exceeded: {onWatch.ElapsedMilliseconds} ms.");
+        }
+        finally
+        {
+            previous.PreferDxgiCapture = false;
+            SettingsService.Save(previous);
+        }
+
+        if (AnnotationToolbarCatalog.ToolForKey(System.Windows.Input.Key.R) != "Rectangle" ||
+            AnnotationToolbarCatalog.ToolForKey(System.Windows.Input.Key.G) != "Magnify" ||
+            AnnotationToolbarCatalog.ToolForKey(System.Windows.Input.Key.Z) is not null)
+            throw new InvalidOperationException("Annotation tool key map is incorrect.");
+
+        Console.WriteLine($"COMPATIBILITY: mixed DPI, portrait, negative coordinates, overlay mapping, GDI-first/DXGI-opt-in capture, remote-session diagnostics, audio fallback and feature-matched stitching verified");
     }
 
     private static BitmapSource WithStickyHeader(BitmapSource frame, BitmapSource headerSource, int height)

@@ -1472,6 +1472,8 @@
   <data name="Correct washed-out colours on HDR displays" xml:space="preserve"><value>校正 HDR 显示器上泛白的颜色</value></data>
   <data name="Prefer DXGI capture for full-screen apps" xml:space="preserve"><value>全屏应用优先使用 DXGI 捕获</value></data>
   <data name="Uses Desktop Duplication when available for still screenshots. Falls back to GDI automatically if DXGI fails." xml:space="preserve"><value>在可用时使用桌面复制进行静态截图。若 DXGI 失败则自动回退到 GDI。</value></data>
+  <data name="Retry with DXGI when GDI capture looks blank" xml:space="preserve"><value>GDI 截图发白/发黑时用 DXGI 重试</value></data>
+  <data name="Keeps GDI as the fast path. When enabled, retries with Desktop Duplication only if the GDI frame looks mostly blank (hard full-screen DirectX cases)." xml:space="preserve"><value>始终优先使用 GDI。启用后仅在 GDI 画面几乎全黑时用桌面复制重试（部分全屏 DirectX 场景）。</value></data>
   <data name="Applies a conservative local tone correction only when Windows reports that HDR is active." xml:space="preserve"><value>仅当 Windows 报告 HDR 已启用时，才应用保守的本地色调校正。</value></data>
   <data name="Automatically detect rotated text" xml:space="preserve"><value>自动检测旋转文字</value></data>
   <data name="Retries low-confidence local OCR at 90, 180 and 270 degrees." xml:space="preserve"><value>当本地 OCR 置信度较低时，自动以 90、180 和 270 度重试。</value></data>

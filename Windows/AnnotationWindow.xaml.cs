@@ -1205,26 +1205,8 @@ public partial class AnnotationEditorControl : UserControl
     {
         if (_textEditor is not null && e.OriginalSource is TextBox) return;
 
-        if (e.Key == Key.F6)
-        {
-            AccessibilityService.ApplyToolbar(ToolbarHost);
-            if (AccessibilityService.FocusFirstToolbarButton(ToolbarHost))
-            {
-                e.Handled = true;
-                return;
-            }
-        }
-        if (Keyboard.FocusedElement is Button &&
-            (e.Key is Key.Left or Key.Right or Key.Up or Key.Down) &&
-            (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) == ModifierKeys.None)
-        {
-            var direction = e.Key is Key.Left or Key.Up ? -1 : 1;
-            if (AccessibilityService.MoveToolbarFocus(ToolbarHost, direction))
-            {
-                e.Handled = true;
-                return;
-            }
-        }
+        if (AccessibilityService.TryHandleToolbarNavigation(e, () => [ToolbarHost]))
+            return;
 
         if (e.Key == Key.Z && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { Undo(); e.Handled = true; }
         else if (e.Key == Key.Y && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { Redo(); e.Handled = true; }
@@ -1250,22 +1232,7 @@ public partial class AnnotationEditorControl : UserControl
 
     private bool TrySelectToolFromKey(Key key)
     {
-        var tool = key switch
-        {
-            Key.R => "Rectangle",
-            Key.O => "Ellipse",
-            Key.A => "Arrow",
-            Key.L => "Line",
-            Key.P => "Pencil",
-            Key.M => "Marker",
-            Key.B => "Blur",
-            Key.T => "Text",
-            Key.N => "Number",
-            Key.W => "Callout",
-            Key.E => "Eraser",
-            Key.G => "Magnify",
-            _ => null
-        };
+        var tool = AnnotationToolbarCatalog.ToolForKey(key);
         if (tool is null) return false;
         var button = FindToolButton(tool);
         if (button is null || button.Visibility != Visibility.Visible || !button.IsEnabled) return false;

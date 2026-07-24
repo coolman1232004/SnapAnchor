@@ -47,18 +47,22 @@ internal static partial class CaptureService
     private static BitmapSource CaptureBounds(Drawing.Rectangle bounds, bool includeCursor)
     {
         var settings = SettingsService.Load();
-        BitmapSource source;
-        if (settings.PreferDxgiCapture &&
+        // GDI first (fast path). DXGI only when opted in and GDI looks blank —
+        // hard full-screen DirectX cases — never as the default hot path.
+        var source = CaptureBoundsGdi(bounds, includeCursor);
+        if (settings.PreferDxgiCapture && LooksMostlyBlank(source) &&
             DxgiCaptureService.TryCapture(bounds, includeCursor, out var dxgiImage) &&
-            dxgiImage is not null)
+            dxgiImage is not null &&
+            !LooksMostlyBlank(dxgiImage))
         {
             source = dxgiImage;
         }
-        else
-        {
-            source = CaptureBoundsGdi(bounds, includeCursor);
-        }
 
+        return FinalizeCapture(source, bounds, settings);
+    }
+
+    private static BitmapSource FinalizeCapture(BitmapSource source, Drawing.Rectangle bounds, AppSettings settings)
+    {
         source = NormalizeDpi96(source);
         source = HdrColorService.CorrectIfNeeded(source, bounds, settings);
         return CaptureExclusionService.Apply(source, bounds, settings);
@@ -76,14 +80,43 @@ internal static partial class CaptureService
         var handle = bitmap.GetHbitmap();
         try
         {
-            var source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+            return System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
                 handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-            return NormalizeDpi96(source);
         }
         finally
         {
             NativeMethods.DeleteObject(handle);
         }
+    }
+
+    /// <summary>
+    /// Cheap sample: full-screen protected content often comes back near-black via GDI.
+    /// </summary>
+    internal static bool LooksMostlyBlank(BitmapSource source)
+    {
+        if (source.PixelWidth < 1 || source.PixelHeight < 1) return true;
+        var converted = source.Format == PixelFormats.Bgra32 || source.Format == PixelFormats.Pbgra32
+            ? source
+            : new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+        var width = converted.PixelWidth;
+        var height = converted.PixelHeight;
+        var stride = width * 4;
+        var sampleH = Math.Min(height, 48);
+        var sampleW = Math.Min(width, 64);
+        var bytes = new byte[stride * sampleH];
+        converted.CopyPixels(new Int32Rect(0, 0, width, sampleH), bytes, stride, 0);
+        long luma = 0;
+        var samples = 0;
+        var xStep = Math.Max(1, sampleW / 16);
+        var yStep = Math.Max(1, sampleH / 12);
+        for (var y = 0; y < sampleH; y += yStep)
+        for (var x = 0; x < sampleW; x += xStep)
+        {
+            var i = y * stride + x * 4;
+            luma += (bytes[i] * 29 + bytes[i + 1] * 150 + bytes[i + 2] * 77) >> 8;
+            samples++;
+        }
+        return samples == 0 || luma / samples < 6;
     }
 
     internal static BitmapSource NormalizeDpi96(BitmapSource source)
@@ -110,7 +143,7 @@ internal static partial class CaptureService
         return normalized;
     }
 
-    private static void DrawCursor(Drawing.Graphics graphics, Drawing.Rectangle bounds)
+    internal static void DrawCursor(Drawing.Graphics graphics, Drawing.Rectangle bounds)
     {
         var info = new NativeMethods.CursorInfo { Size = System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.CursorInfo>() };
         if (!NativeMethods.GetCursorInfo(ref info) || (info.Flags & NativeMethods.CursorShowing) == 0 || info.Cursor == IntPtr.Zero) return;

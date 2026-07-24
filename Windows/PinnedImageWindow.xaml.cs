@@ -1063,38 +1063,8 @@ public partial class PinnedImageWindow : Window
             e.Handled = true;
             return;
         }
-        if (e.Key == Key.F6)
-        {
-            if (InlineEditor.Visibility == Visibility.Visible)
-            {
-                AccessibilityService.ApplyToolbar(InlineEditor);
-                if (AccessibilityService.FocusFirstToolbarButton(InlineEditor))
-                {
-                    e.Handled = true;
-                    return;
-                }
-            }
-            if (TextSelectionToolbar.Visibility == Visibility.Visible)
-            {
-                AccessibilityService.ApplyToolbar(TextSelectionToolbar);
-                if (AccessibilityService.FocusFirstToolbarButton(TextSelectionToolbar))
-                {
-                    e.Handled = true;
-                    return;
-                }
-            }
-        }
-        if (Keyboard.FocusedElement is Button &&
-            e.Key is Key.Left or Key.Right &&
-            InlineEditor.Visibility == Visibility.Visible)
-        {
-            var direction = e.Key == Key.Left ? -1 : 1;
-            if (AccessibilityService.MoveToolbarFocus(InlineEditor, direction))
-            {
-                e.Handled = true;
-                return;
-            }
-        }
+        if (AccessibilityService.TryHandleToolbarNavigation(e, PinToolbarHosts))
+            return;
 
         switch (e.Key)
         {
@@ -1130,5 +1100,13 @@ public partial class PinnedImageWindow : Window
         NativeMethods.SetWindowLongPtr(handle, NativeMethods.GwlExStyle, new IntPtr(style));
         _clickThrough = enabled;
         UpdatePinStateBadge();
+    }
+
+    private IEnumerable<DependencyObject> PinToolbarHosts()
+    {
+        if (InlineEditor.Visibility == Visibility.Visible)
+            yield return InlineEditor;
+        if (TextSelectionToolbar.Visibility == Visibility.Visible)
+            yield return TextSelectionToolbar;
     }
 }

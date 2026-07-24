@@ -71,10 +71,10 @@ public sealed class AppSettings
     public bool OcrDetectOrientation { get; set; } = true;
     public bool CorrectHdrColors { get; set; } = true;
     /// <summary>
-    /// Prefer DXGI Desktop Duplication for still captures (better for some full-screen
-    /// DirectX apps). Falls back to GDI automatically when DXGI fails.
+    /// When true, still captures may retry with DXGI Desktop Duplication if GDI
+    /// returns a mostly blank frame (hard full-screen DirectX cases). GDI stays first.
     /// </summary>
-    public bool PreferDxgiCapture { get; set; } = true;
+    public bool PreferDxgiCapture { get; set; }
     public string UpdateFeedUrl { get; set; } = DefaultUpdateFeedUrl;
     public int ScrollCaptureMaxFrames { get; set; } = 12;
     public int ScrollCaptureDelayMs { get; set; } = 450;
