@@ -954,6 +954,9 @@
   <data name="Search title, tags, OCR text, barcode, source, size, or date" xml:space="preserve">
     <value>搜索标题、标签、OCR 文本、条码、来源、尺寸或日期</value>
   </data>
+  <data name="Hide toolbar" xml:space="preserve">
+    <value>隐藏工具栏</value>
+  </data>
   <data name="Shortcut conflict" xml:space="preserve">
     <value>快捷键冲突</value>
   </data>

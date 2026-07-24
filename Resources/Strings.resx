@@ -954,6 +954,9 @@
   <data name="Search title, tags, OCR text, barcode, source, size, or date" xml:space="preserve">
     <value>Search title, tags, OCR text, barcode, source, size, or date</value>
   </data>
+  <data name="Hide toolbar" xml:space="preserve">
+    <value>Hide toolbar</value>
+  </data>
   <data name="Shortcut conflict" xml:space="preserve">
     <value>Shortcut conflict</value>
   </data>

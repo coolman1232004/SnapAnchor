@@ -75,6 +75,8 @@ public partial class AnnotationEditorControl : UserControl
     internal event Action? ExternalSurfaceMoveCompleted;
     /// <summary>Raised on double-click of the pin image while no drawing tool is active.</summary>
     internal event Action? ExternalSurfaceDoubleClicked;
+    /// <summary>Raised on right-click of the pin image so the owner can open the pin context menu.</summary>
+    internal event Action? ExternalSurfaceRightClicked;
     public event EventHandler? Cancelled;
 
     internal string ActiveTool => _tool;
@@ -817,6 +819,16 @@ public partial class AnnotationEditorControl : UserControl
     private void Surface_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         var id = FindItemId(e.OriginalSource as DependencyObject);
+
+        // Pin toolbar overlay: when not targeting a drawn object with a drawing
+        // tool, open the same pin context menu as without the toolbar.
+        if (_externalBackgroundMode && (id is null || _tool == "None"))
+        {
+            ExternalSurfaceRightClicked?.Invoke();
+            e.Handled = true;
+            return;
+        }
+
         if (id is null) return;
         _selectedId = id;
         RenderAnnotations();

@@ -692,6 +692,12 @@ public partial class PinnedImageWindow : Window
     private void ExitInlineMode()
     {
         if (_inlineMode == "None") return;
+        // Annotation toolbar is a separate top-level window (Show toolbar).
+        if (_inlineMode == "Edit" && _annotationOverlay is not null)
+        {
+            _annotationOverlay.Close();
+            return;
+        }
         if (_inlineMode == "Recognize") InlineRecognition.CancelCurrent();
         InlineEditor.Visibility = Visibility.Collapsed;
         InlineCrop.Visibility = Visibility.Collapsed;

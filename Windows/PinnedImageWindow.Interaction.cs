@@ -209,7 +209,19 @@ public partial class PinnedImageWindow
 
     private void Window_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
     {
+        // When the annotation toolbar overlay is open it owns pointer input over
+        // the pin; that path calls ShowPinContextMenu() directly instead.
         if (_inlineMode != "None") return;
+        ShowPinContextMenu();
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Pin context menu shared by the bare pin window and the annotation
+    /// toolbar overlay so "Show toolbar" mode still offers the same actions.
+    /// </summary>
+    internal void ShowPinContextMenu()
+    {
         if (!SelectedPins.Contains(this)) { ClearSelection(); SetSelected(true); }
         var menu = new ContextMenu();
 
@@ -224,7 +236,11 @@ public partial class PinnedImageWindow
         menu.Items.Add(Item("Save image as…", (_, _) => SaveBitmap(_source, applyOutputEffects: true)));
         menu.Items.Add(Item("Save unscaled image as…", (_, _) => SaveBitmap(_baseSource, applyOutputEffects: false)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item("Show toolbar", (_, _) => BeginEditMode()));
+        // When already editing, offer hide toolbar instead of opening another overlay.
+        if (_inlineMode == "Edit")
+            menu.Items.Add(Item("Hide toolbar", (_, _) => ExitInlineMode()));
+        else
+            menu.Items.Add(Item("Show toolbar", (_, _) => BeginEditMode()));
         menu.Items.Add(Item("Set title...    F2", (_, _) => BeginTitleEdit()));
         menu.Items.Add(CheckItem("Lock position    L", _positionLocked, (_, _) =>
         {
@@ -305,8 +321,8 @@ public partial class PinnedImageWindow
         foreach (var percent in new[] { 50, 100, 150, 200 })
             dimensions.Items.Add(Item(LocalizationService.Format("Zoom to {0}%", percent), (_, _) => SetZoom(percent / 100.0)));
         menu.Items.Add(dimensions);
+        menu.PlacementTarget = this;
         menu.IsOpen = true;
-        e.Handled = true;
     }
 
 }

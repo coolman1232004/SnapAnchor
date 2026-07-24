@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.27] - 2026-07-24
+
+- **Pin + Show toolbar:** right-click on the pin image opens the **same context menu** as without the toolbar
+- Context menu offers **Hide toolbar** while editing; closing the overlay restores normal pin interaction
+
 ## [2.1.26] - 2026-07-24
 
 - **Mixed-DPI dual-monitor pin toolbar:** overlay spans the full virtual desktop (no per-monitor thrash when dragging between laptop and external)

@@ -101,6 +101,12 @@ internal sealed class PinnedAnnotationOverlayWindow : Window
             }
             Close();
         };
+        _editor.ExternalSurfaceRightClicked += () =>
+        {
+            // Same pin context menu as when the toolbar is closed.
+            if (Owner is PinnedImageWindow pin)
+                pin.ShowPinContextMenu();
+        };
 
         _editor.Applied += document =>
         {
