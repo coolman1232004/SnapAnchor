@@ -163,6 +163,9 @@ public partial class PinnedImageWindow : Window
         InlineRecognition.Cancelled += (_, _) => ExitInlineMode();
         Loaded += async (_, _) =>
         {
+            AccessibilityService.Apply(this);
+            if (TextSelectionToolbar.Visibility == Visibility.Visible)
+                AccessibilityService.ApplyToolbar(TextSelectionToolbar);
             Focus();
             ApplyImageScalingMode(animating: false);
             if (!_groupName.Equals(_settings.CurrentPinGroup, StringComparison.OrdinalIgnoreCase)) Hide();
@@ -1060,6 +1063,39 @@ public partial class PinnedImageWindow : Window
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.F6)
+        {
+            if (InlineEditor.Visibility == Visibility.Visible)
+            {
+                AccessibilityService.ApplyToolbar(InlineEditor);
+                if (AccessibilityService.FocusFirstToolbarButton(InlineEditor))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+            if (TextSelectionToolbar.Visibility == Visibility.Visible)
+            {
+                AccessibilityService.ApplyToolbar(TextSelectionToolbar);
+                if (AccessibilityService.FocusFirstToolbarButton(TextSelectionToolbar))
+                {
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+        if (Keyboard.FocusedElement is Button &&
+            e.Key is Key.Left or Key.Right &&
+            InlineEditor.Visibility == Visibility.Visible)
+        {
+            var direction = e.Key == Key.Left ? -1 : 1;
+            if (AccessibilityService.MoveToolbarFocus(InlineEditor, direction))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+
         switch (e.Key)
         {
             case Key.Escape: Close(); break;

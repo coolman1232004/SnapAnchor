@@ -1470,6 +1470,8 @@
   <data name="Back to SnapAnchor" xml:space="preserve"><value>返回 SnapAnchor</value></data>
   <data name="The selected content did not scroll. Place the pointer over a scrollable page and try again." xml:space="preserve"><value>所選內容未捲動。請將指標放在可捲動頁面上，然後重試。</value></data>
   <data name="Correct washed-out colours on HDR displays" xml:space="preserve"><value>校正 HDR 顯示器上泛白的色彩</value></data>
+  <data name="Prefer DXGI capture for full-screen apps" xml:space="preserve"><value>全螢幕應用優先使用 DXGI 擷取</value></data>
+  <data name="Uses Desktop Duplication when available for still screenshots. Falls back to GDI automatically if DXGI fails." xml:space="preserve"><value>在可用時使用桌面複製進行靜態截圖。若 DXGI 失敗則自動回退到 GDI。</value></data>
   <data name="Applies a conservative local tone correction only when Windows reports that HDR is active." xml:space="preserve"><value>僅當 Windows 回報 HDR 已啟用時，才套用保守的本機色調校正。</value></data>
   <data name="Automatically detect rotated text" xml:space="preserve"><value>自動偵測旋轉文字</value></data>
   <data name="Retries low-confidence local OCR at 90, 180 and 270 degrees." xml:space="preserve"><value>當本機 OCR 信心度較低時，自動以 90、180 和 270 度重試。</value></data>

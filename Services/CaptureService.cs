@@ -46,6 +46,26 @@ internal static partial class CaptureService
 
     private static BitmapSource CaptureBounds(Drawing.Rectangle bounds, bool includeCursor)
     {
+        var settings = SettingsService.Load();
+        BitmapSource source;
+        if (settings.PreferDxgiCapture &&
+            DxgiCaptureService.TryCapture(bounds, includeCursor, out var dxgiImage) &&
+            dxgiImage is not null)
+        {
+            source = dxgiImage;
+        }
+        else
+        {
+            source = CaptureBoundsGdi(bounds, includeCursor);
+        }
+
+        source = NormalizeDpi96(source);
+        source = HdrColorService.CorrectIfNeeded(source, bounds, settings);
+        return CaptureExclusionService.Apply(source, bounds, settings);
+    }
+
+    private static BitmapSource CaptureBoundsGdi(Drawing.Rectangle bounds, bool includeCursor)
+    {
         using var bitmap = new Drawing.Bitmap(bounds.Width, bounds.Height, DrawingImaging.PixelFormat.Format32bppPArgb);
         using (var graphics = Drawing.Graphics.FromImage(bitmap))
         {
@@ -58,10 +78,7 @@ internal static partial class CaptureService
         {
             var source = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
                 handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-            source = NormalizeDpi96(source);
-            var settings = SettingsService.Load();
-            source = HdrColorService.CorrectIfNeeded(source, bounds, settings);
-            return CaptureExclusionService.Apply(source, bounds, settings);
+            return NormalizeDpi96(source);
         }
         finally
         {

@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.22] - 2026-07-24
+
+- **P2 quality / trust:** keyboard accessibility for capture and pin toolbars (F6 focuses tools, arrows move focus, visible focus ring, screen-reader names from tooltips)
+- Annotation shortcuts: R/O/A/L/P/M/B/T/N/W/E/G select drawing tools when not typing
+- Prefer **DXGI Desktop Duplication** for still captures (better on some full-screen DirectX apps), with automatic GDI fallback — Preferences → Capture
+- Overlay coordinate mapping shared in `CaptureCoordinateService` for mixed-DPI spanning windows
+- Expanded smoke tests: overlay HWND mapping, stitch edge cases, DXGI/GDI capture sample, toolbar accessible names
+
 ## [2.1.21] - 2026-07-24
 
 - **P1 polish:** clearer first-run tray tip (capture, pin, record, colour picker)

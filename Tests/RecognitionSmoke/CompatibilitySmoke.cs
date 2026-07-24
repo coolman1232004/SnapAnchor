@@ -87,7 +87,39 @@ internal static class CompatibilitySmoke
         if (runtime.Displays.Count == 0 || string.IsNullOrWhiteSpace(RuntimeCompatibilityService.Describe(runtime)))
             throw new InvalidOperationException("Runtime display diagnostics were unavailable.");
 
-        Console.WriteLine($"COMPATIBILITY: mixed DPI, portrait, negative coordinates, remote-session diagnostics, audio fallback and feature-matched stitching verified");
+        // Mixed-DPI spanning overlay: physical HWND mapping (not WPF PointToScreen).
+        var hwnd = new System.Drawing.Rectangle(-1920, -200, 4480, 2520);
+        var screen = CaptureCoordinateService.OverlayToScreen(new Point(2240, 1260), hwnd, 4480, 2520);
+        var back = CaptureCoordinateService.ScreenToOverlay(screen, hwnd, 4480, 2520);
+        if (Math.Abs(screen.X - 320) > 0.5 || Math.Abs(screen.Y - 1060) > 0.5 ||
+            Math.Abs(back.X - 2240) > 0.5 || Math.Abs(back.Y - 1260) > 0.5)
+            throw new InvalidOperationException($"Overlay HWND mapping failed: screen={screen}, back={back}");
+
+        // Single-frame stitch is identity; empty is rejected.
+        var single = createPattern(64, 48);
+        var identity = ScrollingCaptureService.StitchFrames([single]);
+        if (identity.PixelWidth != 64 || identity.PixelHeight != 48)
+            throw new InvalidOperationException("Single-frame stitch must return the original dimensions.");
+        try
+        {
+            ScrollingCaptureService.StitchFrames([]);
+            throw new InvalidOperationException("Empty stitch should throw.");
+        }
+        catch (ArgumentException)
+        {
+            // expected
+        }
+
+        // Prefer DXGI is on by default; still captures through GDI fallback.
+        var defaults = SettingsService.Normalize(new AppSettings());
+        if (!defaults.PreferDxgiCapture)
+            throw new InvalidOperationException("PreferDxgiCapture should default to true.");
+        var sample = CaptureService.CaptureScreenRect(
+            new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop, 32, 32));
+        if (sample.PixelWidth < 1 || sample.PixelHeight < 1)
+            throw new InvalidOperationException("Capture pipeline returned an empty sample.");
+
+        Console.WriteLine($"COMPATIBILITY: mixed DPI, portrait, negative coordinates, overlay mapping, DXGI/GDI capture, remote-session diagnostics, audio fallback and feature-matched stitching verified");
     }
 
     private static BitmapSource WithStickyHeader(BitmapSource frame, BitmapSource headerSource, int height)

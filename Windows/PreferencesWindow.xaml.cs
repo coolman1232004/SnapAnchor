@@ -55,6 +55,7 @@ public partial class PreferencesWindow : Window
         ShowCaptureHintsBox.IsChecked = _settings.ShowCaptureHints;
         EnableColorMagnifierBox.IsChecked = _settings.EnableColorMagnifier;
         HdrColorCorrectionBox.IsChecked = _settings.CorrectHdrColors;
+        PreferDxgiCaptureBox.IsChecked = _settings.PreferDxgiCapture;
         ExcludeSnapAnchorBox.IsChecked = _settings.ExcludeSnapAnchorFromCapture;
         ExcludedAppsList.ItemsSource = _settings.CaptureExcludedProcesses.ToList();
         HotkeyExcludedAppsList.ItemsSource = _settings.HotkeyExcludedProcesses.ToList();
@@ -221,6 +222,7 @@ public partial class PreferencesWindow : Window
         _settings.EnableColorMagnifier = EnableColorMagnifierBox.IsChecked == true;
         _settings.ShowColorSampler = _settings.EnableColorMagnifier;
         _settings.CorrectHdrColors = HdrColorCorrectionBox.IsChecked == true;
+        _settings.PreferDxgiCapture = PreferDxgiCaptureBox.IsChecked == true;
         _settings.ExcludeSnapAnchorFromCapture = ExcludeSnapAnchorBox.IsChecked == true;
         _settings.CaptureExcludedProcesses = ExcludedAppsList.Items.Cast<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)

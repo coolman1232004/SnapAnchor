@@ -83,6 +83,8 @@
                                   ToolTip="Shows a pixel-perfect magnifier near the cursor while capturing. Press C to copy the colour, Shift to switch RGB/HEX."/>
                         <CheckBox x:Name="HdrColorCorrectionBox" Content="Correct washed-out colours on HDR displays" Margin="0,4"
                                   ToolTip="Applies a conservative local tone correction only when Windows reports that HDR is active."/>
+                        <CheckBox x:Name="PreferDxgiCaptureBox" Content="Prefer DXGI capture for full-screen apps" Margin="0,4"
+                                  ToolTip="Uses Desktop Duplication when available for still screenshots. Falls back to GDI automatically if DXGI fails."/>
                     </StackPanel>
                     <TextBlock Grid.Row="5" Text="Long capture frames" VerticalAlignment="Center" Margin="0,8" />
                     <TextBox x:Name="ScrollFramesBox" Grid.Row="5" Grid.Column="1" Width="90" Height="32" HorizontalAlignment="Left" Margin="0,6" Padding="7,5" />

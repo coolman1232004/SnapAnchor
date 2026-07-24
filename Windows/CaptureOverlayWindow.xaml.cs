@@ -140,6 +140,7 @@ public partial class CaptureOverlayWindow : Window
                 catch { /* detection remains best-effort */ }
             }
             PositionFloatingPanels();
+            AccessibilityService.ApplyToolbar(ActionBar);
             Focus();
             if (_completionMode == CaptureCompletionMode.FullScreenDraw)
                 Dispatcher.BeginInvoke(InitializeFullScreenDrawing);
@@ -791,25 +792,11 @@ public partial class CaptureOverlayWindow : Window
         return DisplayTopologyService.VirtualBoundsPixels();
     }
 
-    private Point OverlayToScreen(Point point)
-    {
-        var bounds = OverlayHwndScreenRect();
-        var width = Math.Max(1.0, ActualWidth > 1 ? ActualWidth : bounds.Width);
-        var height = Math.Max(1.0, ActualHeight > 1 ? ActualHeight : bounds.Height);
-        return new Point(
-            bounds.Left + point.X * bounds.Width / width,
-            bounds.Top + point.Y * bounds.Height / height);
-    }
+    private Point OverlayToScreen(Point point) =>
+        CaptureCoordinateService.OverlayToScreen(point, OverlayHwndScreenRect(), ActualWidth, ActualHeight);
 
-    private Point ScreenToOverlay(Point point)
-    {
-        var bounds = OverlayHwndScreenRect();
-        var width = Math.Max(1.0, ActualWidth > 1 ? ActualWidth : bounds.Width);
-        var height = Math.Max(1.0, ActualHeight > 1 ? ActualHeight : bounds.Height);
-        return new Point(
-            (point.X - bounds.Left) * width / bounds.Width,
-            (point.Y - bounds.Top) * height / bounds.Height);
-    }
+    private Point ScreenToOverlay(Point point) =>
+        CaptureCoordinateService.ScreenToOverlay(point, OverlayHwndScreenRect(), ActualWidth, ActualHeight);
 
     private void Copy_Click(object sender, RoutedEventArgs e)
     {
@@ -896,6 +883,8 @@ public partial class CaptureOverlayWindow : Window
         CaptureInlineEditor.ConfigureCaptureOverlay(_selection, new Size(ActualWidth, ActualHeight), _selection,
             showActions: false, toolbarLeft: actionBounds.Left, toolbarTop: actionBounds.Bottom + 2,
             showPrimaryToolbar: false, allowToolToggleOff: true);
+        AccessibilityService.ApplyToolbar(ActionBar);
+        AccessibilityService.ApplyToolbar(CaptureInlineEditor);
         UpdateCaptureAnnotationHistoryButtons();
         RenderSelection();
         initialTool ??= captureToolEnabled.FirstOrDefault();
@@ -1150,6 +1139,31 @@ public partial class CaptureOverlayWindow : Window
             if (OcrPanel.Visibility == Visibility.Visible) CloseOcr_Click(this, new RoutedEventArgs()); else Close();
             e.Handled = true;
             return;
+        }
+        if (e.Key == Key.F6)
+        {
+            var host = CaptureInlineEditor.Visibility == Visibility.Visible
+                ? (DependencyObject)CaptureInlineEditor
+                : ActionBar;
+            AccessibilityService.ApplyToolbar(host);
+            if (AccessibilityService.FocusFirstToolbarButton(host))
+            {
+                e.Handled = true;
+                return;
+            }
+        }
+        if (Keyboard.FocusedElement is Button &&
+            e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
+        {
+            var host = CaptureInlineEditor.Visibility == Visibility.Visible
+                ? (DependencyObject)CaptureInlineEditor
+                : ActionBar;
+            var direction = e.Key is Key.Left or Key.Up ? -1 : 1;
+            if (AccessibilityService.MoveToolbarFocus(host, direction))
+            {
+                e.Handled = true;
+                return;
+            }
         }
         if (e.Key == Key.Tab)
         {

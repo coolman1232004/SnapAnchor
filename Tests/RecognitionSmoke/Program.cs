@@ -1106,9 +1106,11 @@ internal static class Program
             var pencilCursor = surface.Cursor == System.Windows.Input.Cursors.Pen;
             ((Button)editor.FindName("RectangleToolButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var shapeCursor = surface.Cursor == System.Windows.Input.Cursors.Cross;
-            var toolbarHasNoBlankFocusTarget = double.IsNaN(((Border)editor.FindName("PrimaryToolbarFrame")).Width) &&
-                !((Button)editor.FindName("BlurToolButton")).Focusable &&
-                !((Button)editor.FindName("EraserToolButton")).Focusable;
+            // Toolbars stay auto-sized (NaN width). Drawing tools are keyboard-focusable
+            // for accessibility (F6 / Tab / arrows); palette swatches stay mouse-only.
+            var toolbarKeyboardAccessible = double.IsNaN(((Border)editor.FindName("PrimaryToolbarFrame")).Width) &&
+                ((Button)editor.FindName("BlurToolButton")).Focusable &&
+                ((Button)editor.FindName("EraserToolButton")).Focusable;
 
             ((Button)editor.FindName("BlurToolButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             var directBrush = (AnnotationItem)type.GetMethod("AddBrushStroke", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
@@ -1119,10 +1121,10 @@ internal static class Program
                 ((StackPanel)editor.FindName("BlurOptionsPanel")).Visibility == Visibility.Visible;
 
             return handleCount == 8 && !hasDecorativeSelectionOutline && textCursor && paintStyleTextEditor && eraserCursor && pencilCursor && shapeCursor &&
-                toolbarHasNoBlankFocusTarget && blurUsesStrokePath;
+                toolbarKeyboardAccessible && blurUsesStrokePath;
         });
         if (!annotationInteractionMatches) return 45;
-        Console.WriteLine("ANNOTATION INTERACTION: Paint-style multiline text frame, eight resize grips and direct blur brush activation verified");
+        Console.WriteLine("ANNOTATION INTERACTION: Paint-style multiline text frame, eight resize grips, keyboard-focusable tools and direct blur brush activation verified");
 
         var arrowAdjustmentMatches = RunSta(() =>
         {

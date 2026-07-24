@@ -191,7 +191,7 @@ Build outputs, local backups, diagnostics, personal settings, and signing certif
 
 SnapAnchor is a substantial working application, but it is still an independently developed project. Before treating a release as production-ready, test the features you rely on across your monitor scaling, Windows version, audio devices, and security software.
 
-Suggested next areas include additional automated UI interaction coverage, signed releases, reproducible release automation, accessibility review, and more real-world mixed-monitor testing.
+Suggested next areas include additional automated UI interaction coverage, signed releases (when a certificate is available), reproducible release automation (GitHub Actions workflow scope), and more real-world mixed-monitor testing. Capture and pin toolbars support keyboard focus (F6) and screen-reader names; still captures can prefer DXGI Desktop Duplication with GDI fallback.
 
 ## Issues and contributions
 

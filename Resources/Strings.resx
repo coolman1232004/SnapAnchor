@@ -1470,6 +1470,8 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="Back to SnapAnchor" xml:space="preserve"><value>Back to SnapAnchor</value></data>
   <data name="The selected content did not scroll. Place the pointer over a scrollable page and try again." xml:space="preserve"><value>The selected content did not scroll. Place the pointer over a scrollable page and try again.</value></data>
   <data name="Correct washed-out colours on HDR displays" xml:space="preserve"><value>Correct washed-out colours on HDR displays</value></data>
+  <data name="Prefer DXGI capture for full-screen apps" xml:space="preserve"><value>Prefer DXGI capture for full-screen apps</value></data>
+  <data name="Uses Desktop Duplication when available for still screenshots. Falls back to GDI automatically if DXGI fails." xml:space="preserve"><value>Uses Desktop Duplication when available for still screenshots. Falls back to GDI automatically if DXGI fails.</value></data>
   <data name="Applies a conservative local tone correction only when Windows reports that HDR is active." xml:space="preserve"><value>Applies a conservative local tone correction only when Windows reports that HDR is active.</value></data>
   <data name="Automatically detect rotated text" xml:space="preserve"><value>Automatically detect rotated text</value></data>
   <data name="Retries low-confidence local OCR at 90, 180 and 270 degrees." xml:space="preserve"><value>Retries low-confidence local OCR at 90, 180 and 270 degrees.</value></data>
