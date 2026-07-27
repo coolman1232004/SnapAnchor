@@ -160,17 +160,24 @@ internal static class AccessibilityService
     private static IEnumerable<DependencyObject> EnumerateVisualTree(DependencyObject root)
     {
         yield return root;
-        var count = VisualTreeHelper.GetChildrenCount(root);
-        for (var index = 0; index < count; index++)
+        // FrameworkContentElement objects such as Run participate in the
+        // logical tree but are not Visual/Visual3D objects. Passing one to
+        // VisualTreeHelper throws and previously crashed whiteboard toolbar
+        // keyboard/accessibility setup.
+        if (root is Visual or System.Windows.Media.Media3D.Visual3D)
         {
-            var child = VisualTreeHelper.GetChild(root, index);
-            foreach (var nested in EnumerateVisualTree(child))
-                yield return nested;
+            var count = VisualTreeHelper.GetChildrenCount(root);
+            for (var index = 0; index < count; index++)
+            {
+                var child = VisualTreeHelper.GetChild(root, index);
+                foreach (var nested in EnumerateVisualTree(child))
+                    yield return nested;
+            }
         }
 
         foreach (var logical in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
         {
-            if (logical is Visual) continue;
+            if (logical is Visual or System.Windows.Media.Media3D.Visual3D) continue;
             foreach (var nested in EnumerateVisualTree(logical))
                 yield return nested;
         }

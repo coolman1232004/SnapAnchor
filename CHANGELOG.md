@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.30] - 2026-07-27
+
+- Fixed the whiteboard crash caused by sending logical inline text (`Run`) through WPF's visual-tree traversal.
+- Accessibility and keyboard toolbar discovery now safely handles both visual elements and non-visual logical content.
+- Extended the whiteboard regression probe to exercise its toolbar accessibility setup.
+
 ## [2.1.29] - 2026-07-27
 
 - Prevented the disabled colour picker / magnifier from flashing for one frame at the upper-left corner of another monitor when capture starts.
