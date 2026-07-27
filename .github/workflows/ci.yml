@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore .\SnapAnchor.csproj
+
+      - name: Validate release metadata
+        shell: pwsh
+        run: .\Tests\Test-ReleaseMetadata.ps1
+
+      - name: Audit dependencies
+        shell: pwsh
+        run: |
+          $audit = dotnet list .\SnapAnchor.csproj package --vulnerable --include-transitive
+          $audit | Write-Host
+          if ($LASTEXITCODE -ne 0 -or $audit -match 'has the following vulnerable packages') {
+            throw 'NuGet vulnerability audit failed.'
+          }
+
+      - name: Build (Release x64)
+        run: dotnet build .\SnapAnchor.csproj -c Release -p:Platform=x64 --no-restore -warnaserror
+
+      - name: Smoke tests
+        shell: pwsh
+        run: .\Tests\Run-Smoke.ps1
