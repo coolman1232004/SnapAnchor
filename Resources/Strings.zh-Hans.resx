@@ -1528,4 +1528,8 @@
   <data name="3. Esc cancels" xml:space="preserve"><value>3. Esc 取消</value></data>
   <data name="Shortcuts" xml:space="preserve"><value>快捷键</value></data>
   <data name="Mode: Window" xml:space="preserve"><value>模式：窗口</value></data>
+  <data name="The GitHub release did not contain a valid SHA-256 checksum." xml:space="preserve"><value>GitHub 版本未包含有效的 SHA-256 校验值。</value></data>
+  <data name="SnapAnchor {0} requires Windows build {1} or later. This computer is running build {2}." xml:space="preserve"><value>SnapAnchor {0} 需要 Windows 内部版本 {1} 或更高版本。此电脑当前运行内部版本 {2}。</value></data>
+  <data name="Digitally signed package" xml:space="preserve"><value>已进行数字签名的软件包</value></data>
+  <data name="Unsigned package - SHA-256 will be verified before it runs" xml:space="preserve"><value>未签名的软件包 - 运行前将验证 SHA-256</value></data>
 </root>

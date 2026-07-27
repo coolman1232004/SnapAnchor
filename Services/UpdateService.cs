@@ -4,7 +4,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace SnapAnchor.Services;
@@ -24,7 +23,9 @@ internal sealed record UpdateCheckResult(
     UpdatePackageKind PackageKind = UpdatePackageKind.Installer,
     long DownloadSize = 0,
     string ReleaseNotes = "",
-    string ReleasePageUrl = "");
+    string ReleasePageUrl = "",
+    int MinimumWindowsBuild = 0,
+    bool IsSigned = false);
 
 internal enum UpdateProgressStage
 {
@@ -92,6 +93,16 @@ internal static class UpdateService
             : ResolvePackageUrl(uri, manifest.DownloadUrl, manifest.InstallerFile);
         var sha256 = portable ? manifest.PortableSha256 : manifest.InstallerSha256;
         var size = portable ? manifest.PortableSize : manifest.InstallerSize;
+        if (!UpdatePolicyService.IsValidSha256(sha256))
+            return new UpdateCheckResult(false,
+                LocalizationService.Current("The GitHub release did not contain a valid SHA-256 checksum."));
+        if (!UpdatePolicyService.SupportsCurrentWindows(manifest.MinimumWindowsBuild))
+            return new UpdateCheckResult(false,
+                LocalizationService.Format(
+                    "SnapAnchor {0} requires Windows build {1} or later. This computer is running build {2}.",
+                    published.ToString(3),
+                    manifest.MinimumWindowsBuild,
+                    UpdatePolicyService.CurrentWindowsBuild));
         var edition = LocalizationService.Current(portable ? "portable copy" : "installed copy");
         var notes = LocalizationService.CurrentLanguage == LocalizationService.English
             ? manifest.ReleaseNotes ?? string.Empty
@@ -100,13 +111,15 @@ internal static class UpdateService
         if (string.IsNullOrWhiteSpace(downloadUrl))
             message += "\n\n" + LocalizationService.Current("The required update package is not attached to this GitHub release.");
         return new UpdateCheckResult(true, message, downloadUrl, published.ToString(3), sha256 ?? string.Empty,
-            packageKind, size, notes, ReleasePage(uri, published.ToString(3)));
+            packageKind, size, notes, ReleasePage(uri, published.ToString(3)),
+            manifest.MinimumWindowsBuild, manifest.Signed);
     }
 
     internal static async Task<PreparedUpdate> PrepareAsync(UpdateCheckResult update,
         IProgress<UpdateProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
-        if (TryLoadPending(update, out var pending)) return pending;
+        var pending = await TryLoadPendingAsync(update, cancellationToken);
+        if (pending is not null) return pending;
         var package = await DownloadPackageAsync(update, progress, cancellationToken);
         if (update.PackageKind == UpdatePackageKind.Installer)
         {
@@ -115,6 +128,15 @@ internal static class UpdateService
             return preparedInstaller;
         }
 
+        return await PreparePortablePackageAsync(update, package, progress, cancellationToken);
+    }
+
+    private static async Task<PreparedUpdate> PreparePortablePackageAsync(
+        UpdateCheckResult update,
+        string package,
+        IProgress<UpdateProgressInfo>? progress,
+        CancellationToken cancellationToken)
+    {
         progress?.Report(new UpdateProgressInfo(UpdateProgressStage.Preparing, 0));
         var stagingDirectory = Path.Combine(UpdateRoot(), $"Portable-{update.Version}-{Guid.NewGuid():N}");
         Directory.CreateDirectory(stagingDirectory);
@@ -155,7 +177,7 @@ internal static class UpdateService
         if (File.Exists(finalPath))
         {
             progress?.Report(new UpdateProgressInfo(UpdateProgressStage.Verifying, 1, new FileInfo(finalPath).Length, new FileInfo(finalPath).Length));
-            if (await HashMatchesAsync(finalPath, update.Sha256, cancellationToken)) return finalPath;
+            if (await UpdatePolicyService.HashMatchesAsync(finalPath, update.Sha256, cancellationToken)) return finalPath;
             File.Delete(finalPath);
         }
 
@@ -180,7 +202,7 @@ internal static class UpdateService
         }
 
         progress?.Report(new UpdateProgressInfo(UpdateProgressStage.Verifying, 1, new FileInfo(temporaryPath).Length, total));
-        if (!await HashMatchesAsync(temporaryPath, update.Sha256, cancellationToken))
+        if (!await UpdatePolicyService.HashMatchesAsync(temporaryPath, update.Sha256, cancellationToken))
         {
             File.Delete(temporaryPath);
             throw new InvalidDataException(LocalizationService.Current("The downloaded GitHub package failed its SHA-256 integrity check."));
@@ -236,21 +258,43 @@ internal static class UpdateService
         return true;
     }
 
-    internal static bool TryLoadPending(UpdateCheckResult update, out PreparedUpdate prepared)
+    internal static bool HasPendingUpdate(UpdateCheckResult update) =>
+        TryReadPending(update, out _);
+
+    internal static async Task<PreparedUpdate?> TryLoadPendingAsync(
+        UpdateCheckResult update,
+        CancellationToken cancellationToken = default)
     {
-        prepared = null!;
+        if (!TryReadPending(update, out var data)) return null;
+        if (!await UpdatePolicyService.HashMatchesAsync(data.PackagePath, update.Sha256, cancellationToken))
+        {
+            ClearPending();
+            return null;
+        }
+
+        if (update.PackageKind == UpdatePackageKind.Installer)
+            return new PreparedUpdate(update, data.PackagePath);
+
+        // The archive is verified above. Re-extract it before use rather than
+        // trusting a user-writable staging directory left by an earlier run.
+        TryDeleteDirectory(data.StagingDirectory);
+        return await PreparePortablePackageAsync(update, data.PackagePath, progress: null, cancellationToken);
+    }
+
+    private static bool TryReadPending(UpdateCheckResult update, out PendingUpdateData data)
+    {
+        data = null!;
         try
         {
             var path = Path.Combine(UpdateRoot(), PendingFileName);
             if (!File.Exists(path)) return false;
-            var data = JsonSerializer.Deserialize<PendingUpdateData>(File.ReadAllText(path), JsonOptions);
+            data = JsonSerializer.Deserialize<PendingUpdateData>(File.ReadAllText(path), JsonOptions)!;
             if (data is null || !data.Version.Equals(update.Version, StringComparison.OrdinalIgnoreCase) ||
                 data.PackageKind != update.PackageKind || !IsUnderUpdateRoot(data.PackagePath) || !File.Exists(data.PackagePath))
                 return false;
             if (update.PackageKind == UpdatePackageKind.Portable &&
-                (!IsUnderUpdateRoot(data.StagingDirectory) || !File.Exists(Path.Combine(data.StagingDirectory, "SnapAnchor.exe"))))
+                !IsUnderUpdateRoot(data.StagingDirectory))
                 return false;
-            prepared = new PreparedUpdate(update, data.PackagePath, data.StagingDirectory);
             return true;
         }
         catch
@@ -299,7 +343,8 @@ internal static class UpdateService
         if (Uri.TryCreate(explicitUrl, UriKind.Absolute, out var absolute) && absolute.Scheme == Uri.UriSchemeHttps)
             return absolute.AbsoluteUri;
         if (string.IsNullOrWhiteSpace(packageFile)) return string.Empty;
-        return new Uri(feedUri, packageFile.Trim()).AbsoluteUri;
+        var resolved = new Uri(feedUri, packageFile.Trim());
+        return resolved.Scheme == Uri.UriSchemeHttps ? resolved.AbsoluteUri : string.Empty;
     }
 
     internal static string FormatBytes(long bytes)
@@ -328,14 +373,6 @@ internal static class UpdateService
             return true;
         }
         catch { return false; }
-    }
-
-    private static async Task<bool> HashMatchesAsync(string path, string expected, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(expected)) return true;
-        await using var stream = File.OpenRead(path);
-        var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, cancellationToken));
-        return actual.Equals(expected.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task ExtractArchiveSafelyAsync(string archivePath, string destination, CancellationToken cancellationToken)
@@ -394,5 +431,7 @@ internal static class UpdateService
         public string? PortableSha256 { get; set; }
         public long InstallerSize { get; set; }
         public long PortableSize { get; set; }
+        public int MinimumWindowsBuild { get; set; }
+        public bool Signed { get; set; }
     }
 }

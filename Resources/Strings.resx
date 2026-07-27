@@ -1528,4 +1528,8 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="3. Esc cancels" xml:space="preserve"><value>3. Esc cancels</value></data>
   <data name="Shortcuts" xml:space="preserve"><value>Shortcuts</value></data>
   <data name="Mode: Window" xml:space="preserve"><value>Mode: Window</value></data>
+  <data name="The GitHub release did not contain a valid SHA-256 checksum." xml:space="preserve"><value>The GitHub release did not contain a valid SHA-256 checksum.</value></data>
+  <data name="SnapAnchor {0} requires Windows build {1} or later. This computer is running build {2}." xml:space="preserve"><value>SnapAnchor {0} requires Windows build {1} or later. This computer is running build {2}.</value></data>
+  <data name="Digitally signed package" xml:space="preserve"><value>Digitally signed package</value></data>
+  <data name="Unsigned package - SHA-256 will be verified before it runs" xml:space="preserve"><value>Unsigned package - SHA-256 will be verified before it runs</value></data>
 </root>

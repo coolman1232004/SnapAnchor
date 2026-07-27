@@ -20,6 +20,8 @@ internal static class ElementDetectionService
     private const int MaxElementsPerWindow = 48;
     private const int MaxElementDepth = 4;
     private const int MaxNodesVisited = 120;
+    internal const int WindowCacheLifetimeMs = 180;
+    internal const int ElementCacheLifetimeMs = 1200;
 
     private sealed record CachedRegion(
         Rect Bounds,
@@ -29,9 +31,11 @@ internal static class ElementDetectionService
         int Depth,
         IntPtr Window);
 
+    private sealed record ElementCache(List<CachedRegion> Regions, long LoadedTick);
+
     private static readonly object Sync = new();
     private static List<CachedRegion> _windows = [];
-    private static readonly Dictionary<IntPtr, List<CachedRegion>> ElementsByWindow = new();
+    private static readonly Dictionary<IntPtr, ElementCache> ElementsByWindow = new();
     private static readonly HashSet<IntPtr> ElementLoadStarted = new();
     private static IntPtr _excludedHwnd;
     private static long _lastWindowRefreshTick;
@@ -55,10 +59,22 @@ internal static class ElementDetectionService
         var windows = EnumerateWindows(excludedOverlayHwnd);
         lock (Sync)
         {
+            var oldWindows = _windows.ToDictionary(window => window.Window);
+            var liveHandles = windows.Select(window => window.Window).ToHashSet();
+            foreach (var handle in ElementsByWindow.Keys.ToArray())
+            {
+                var moved = oldWindows.TryGetValue(handle, out var previous) &&
+                            windows.FirstOrDefault(window => window.Window == handle) is { } current &&
+                            !NearlyEqual(previous.Bounds, current.Bounds);
+                if (!liveHandles.Contains(handle) || moved)
+                {
+                    ElementsByWindow.Remove(handle);
+                    ElementLoadStarted.Remove(handle);
+                }
+            }
+            ElementLoadStarted.RemoveWhere(handle => !liveHandles.Contains(handle));
             _excludedHwnd = excludedOverlayHwnd;
             _windows = windows;
-            ElementsByWindow.Clear();
-            ElementLoadStarted.Clear();
             _lastWindowRefreshTick = Environment.TickCount64;
         }
     }
@@ -105,10 +121,17 @@ internal static class ElementDetectionService
             var schedule = false;
             lock (Sync)
             {
-                if (ElementsByWindow.TryGetValue(top.Window, out var ready))
-                    elements = ready;
-                else if (ElementLoadStarted.Add(top.Window))
-                    schedule = true;
+                if (ElementsByWindow.TryGetValue(top.Window, out var ready) &&
+                    !IsCacheExpired(ready.LoadedTick, Environment.TickCount64, ElementCacheLifetimeMs))
+                {
+                    elements = ready.Regions;
+                }
+                else
+                {
+                    ElementsByWindow.Remove(top.Window);
+                    if (ElementLoadStarted.Add(top.Window))
+                        schedule = true;
+                }
             }
 
             if (schedule)
@@ -184,11 +207,24 @@ internal static class ElementDetectionService
             try
             {
                 var collected = LoadElementsForWindow(window, windowBounds, zOrder);
-                lock (Sync) ElementsByWindow[window] = collected;
+                lock (Sync)
+                {
+                    if (_windows.FirstOrDefault(item => item.Window == window) is { } current &&
+                        NearlyEqual(current.Bounds, windowBounds))
+                        ElementsByWindow[window] = new ElementCache(collected, Environment.TickCount64);
+                    ElementLoadStarted.Remove(window);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                lock (Sync) ElementsByWindow[window] = [];
+                lock (Sync)
+                {
+                    if (_windows.FirstOrDefault(item => item.Window == window) is { } current &&
+                        NearlyEqual(current.Bounds, windowBounds))
+                        ElementsByWindow[window] = new ElementCache([], Environment.TickCount64);
+                    ElementLoadStarted.Remove(window);
+                }
+                DiagnosticsService.Log("element-detection", ex.Message, ex);
             }
         });
         WorkerSignal.Set();
@@ -287,12 +323,18 @@ internal static class ElementDetectionService
 
     private static void EnsureWindows(IntPtr excludedWindow)
     {
+        var refresh = false;
         lock (Sync)
         {
-            if (_windows.Count > 0 && _excludedHwnd == excludedWindow) return;
+            refresh = _windows.Count == 0 ||
+                      _excludedHwnd != excludedWindow ||
+                      IsCacheExpired(_lastWindowRefreshTick, Environment.TickCount64, WindowCacheLifetimeMs);
         }
-        RebuildWindowCache(excludedWindow);
+        if (refresh) RebuildWindowCache(excludedWindow);
     }
+
+    internal static bool IsCacheExpired(long loadedTick, long nowTick, int lifetimeMs) =>
+        loadedTick <= 0 || nowTick - loadedTick >= Math.Max(1, lifetimeMs);
 
     private static CachedRegion? HitTestWindow(Point screenPoint)
     {

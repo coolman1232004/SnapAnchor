@@ -413,7 +413,7 @@ public partial class MainWindow : Window
             case AppCommandKind.Whiteboard: OpenWhiteboard(transparent: false); break;
             case AppCommandKind.TransparentWhiteboard: OpenWhiteboard(transparent: true); break;
             case AppCommandKind.ColorPicker: _ = BeginCommandCaptureAsync(CaptureCompletionMode.ColorPicker, options); break;
-            case AppCommandKind.Exit: ExitApplication(); break;
+            case AppCommandKind.Exit: _ = ExitApplicationAsync(); break;
         }
     }
 
@@ -519,7 +519,7 @@ public partial class MainWindow : Window
         };
         RefreshTrayMenu();
         _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ShowDashboard);
-        _trayIcon.BalloonTipClicked += (_, _) => Dispatcher.Invoke(RunAvailableUpdate);
+        _trayIcon.BalloonTipClicked += (_, _) => Dispatcher.BeginInvoke(() => _ = RunAvailableUpdateAsync());
         MaybeShowWelcomeTip();
     }
 
@@ -563,12 +563,12 @@ public partial class MainWindow : Window
         menu.Items.Clear();
         if (_availableUpdate is not null)
         {
-            var ready = UpdateService.TryLoadPending(_availableUpdate, out _);
+            var ready = UpdateService.HasPendingUpdate(_availableUpdate);
             var label = ready
                 ? LocalizationService.Format("Restart and update to SnapAnchor {0}...", _availableUpdate.Version)
                 : LocalizationService.Format("Download SnapAnchor {0} update...", _availableUpdate.Version);
             var updateItem = new Forms.ToolStripMenuItem(label) { Font = new Font(menu.Font, System.Drawing.FontStyle.Bold) };
-            updateItem.Click += (_, _) => Dispatcher.Invoke(RunAvailableUpdate);
+            updateItem.Click += (_, _) => Dispatcher.BeginInvoke(() => _ = RunAvailableUpdateAsync());
             menu.Items.Add(updateItem);
             menu.Items.Add(new Forms.ToolStripSeparator());
         }
@@ -619,7 +619,7 @@ public partial class MainWindow : Window
         });
         menu.Items.Add(disableItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(L("Exit"), null, (_, _) => Dispatcher.Invoke(ExitApplication));
+        menu.Items.Add(L("Exit"), null, (_, _) => Dispatcher.BeginInvoke(() => _ = ExitApplicationAsync()));
     }
 
     internal void NotifyUpdateAvailable(UpdateCheckResult update)
@@ -627,7 +627,7 @@ public partial class MainWindow : Window
         _availableUpdate = update;
         RefreshTrayMenu();
         if (_trayIcon is null) return;
-        var ready = UpdateService.TryLoadPending(update, out _);
+        var ready = UpdateService.HasPendingUpdate(update);
         _trayIcon.ShowBalloonTip(7000,
             L(ready ? "SnapAnchor update ready" : "SnapAnchor update available"),
             ready
@@ -636,13 +636,13 @@ public partial class MainWindow : Window
             Forms.ToolTipIcon.Info);
     }
 
-    private void RunAvailableUpdate()
+    private async Task RunAvailableUpdateAsync()
     {
         if (_availableUpdate is null) return;
         ShowDashboard();
         try
         {
-            if (UpdateWorkflowService.RunAvailable(this, _availableUpdate)) Application.Current.Shutdown();
+            if (await UpdateWorkflowService.RunAvailableAsync(this, _availableUpdate)) Application.Current.Shutdown();
             else RefreshTrayMenu();
         }
         catch (Exception ex)
@@ -680,7 +680,7 @@ public partial class MainWindow : Window
             Hide();
             return;
         }
-        Dispatcher.BeginInvoke(ExitApplication);
+        Dispatcher.BeginInvoke(() => _ = ExitApplicationAsync());
     }
 
     internal void DisposeLayoutPreview()
@@ -705,7 +705,7 @@ public partial class MainWindow : Window
         _trayIcon = null;
     }
 
-    private async void ExitApplication()
+    private async Task ExitApplicationAsync()
     {
         if (_exitStarted) return;
         _exitStarted = true;
@@ -713,11 +713,22 @@ public partial class MainWindow : Window
         _sessionTimer.Stop();
         _desktopTimer.Stop();
         PinnedImageWindow.PinsChanged -= PinnedImageWindow_PinsChanged;
-        await PinnedImageWindow.SaveSessionAsync();
-        UnregisterAllHotkeys();
-        _source?.RemoveHook(WndProc);
-        _trayIcon?.Dispose();
-        Close();
+        try
+        {
+            await PinnedImageWindow.SaveSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            DiagnosticsService.Log("shutdown-session", "Could not save the final pin session.", ex);
+        }
+        finally
+        {
+            UnregisterAllHotkeys();
+            _source?.RemoveHook(WndProc);
+            _trayIcon?.Dispose();
+            _trayIcon = null;
+            Close();
+        }
     }
 
     private static void ShowError(string title, string message) =>

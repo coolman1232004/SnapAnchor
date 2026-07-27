@@ -624,7 +624,7 @@ public partial class PinnedImageWindow : Window
         if (_inlineMode != "None") return;
         BeginInlineMode("Recognize", 176);
         InlineRecognition.Visibility = Visibility.Visible;
-        InlineRecognition.LoadImage(_source);
+        _ = InlineRecognition.LoadImageAsync(_source);
         InlineRecognition.Focus();
     }
 

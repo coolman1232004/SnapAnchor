@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.28] - 2026-07-27
+
+- Centralized application, installer, package, documentation, and release-manifest version metadata.
+- Hardened installed and portable updates with mandatory SHA-256 verification, pending-package revalidation, Windows-build compatibility checks, and visible signing status.
+- Added committed GitHub CI for release builds, smoke/localization tests, dependency auditing, and release-metadata validation.
+- Refreshed window and UI-element detection caches on a bounded lifetime so moved windows and dynamic controls do not retain stale outlines.
+- Added a versioned settings migration that preserves legacy color-magnifier choices.
+- Replaced non-event asynchronous lifecycle APIs with awaitable tasks and made shutdown cleanup resilient to session-save failures.
+- Split update policy, annotation overlay/command handling, and regression checks into focused components to reduce UI-controller and smoke-runner responsibilities.
+
 ## [2.1.27] - 2026-07-24
 
 - **Pin + Show toolbar:** right-click on the pin image opens the **same context menu** as without the toolbar

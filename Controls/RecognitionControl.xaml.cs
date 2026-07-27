@@ -30,7 +30,7 @@ public partial class RecognitionControl : UserControl
         Unloaded += (_, _) => _cancellation?.Cancel();
     }
 
-    public async void LoadImage(BitmapSource image)
+    public async Task LoadImageAsync(BitmapSource image)
     {
         _image = image;
         PreviewImage.Source = image;

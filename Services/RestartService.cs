@@ -44,7 +44,7 @@ internal static class RestartService
         return remaining.ToArray();
     }
 
-    internal static async void RestartApplication()
+    internal static async Task RestartApplicationAsync()
     {
         var executable = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(executable)) return;

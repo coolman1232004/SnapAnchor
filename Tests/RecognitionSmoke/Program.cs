@@ -27,6 +27,9 @@ internal static class Program
         LocalizationSmoke.Run();
         CompatibilitySmoke.Run(CreatePatternImage);
         UpdateUiSmoke.Run();
+        SettingsMigrationSmoke.Run();
+        ElementDetectionSmoke.Run();
+        UpdateSecuritySmoke.Run();
 
         var physicalUnion = DisplayTopologyService.UnionBounds(
         [
@@ -36,21 +39,6 @@ internal static class Program
         if (physicalUnion != new Drawing.Rectangle(-1920, -200, 4480, 1440)) return 84;
         var physicalDesktop = DisplayTopologyService.VirtualBoundsPixels();
         if (physicalDesktop.Width <= 0 || physicalDesktop.Height <= 0) return 85;
-        var repairedDetectionSettings = SettingsService.Normalize(new AppSettings
-        {
-            SettingsSchemaVersion = 0,
-            ShowCaptureSize = false,
-            ShowElementDetection = false
-        });
-        var preservedDetectionSettings = SettingsService.Normalize(new AppSettings
-        {
-            SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion,
-            ShowElementDetection = false
-        });
-        if (repairedDetectionSettings.ShowElementDetection != true ||
-            preservedDetectionSettings.ShowElementDetection != false) return 87;
-        Console.WriteLine("DETECTION PREFERENCE: legacy dimension coupling repaired while explicit choices remain preserved");
-
         var nonStandardDpi = BitmapSource.Create(7, 5, 144, 120, PixelFormats.Bgra32, null, new byte[7 * 5 * 4], 7 * 4);
         var normalizedDpi = CaptureService.NormalizeDpi96(nonStandardDpi);
         if (normalizedDpi.PixelWidth != 7 || normalizedDpi.PixelHeight != 5 ||
@@ -1319,24 +1307,6 @@ internal static class Program
         Directory.Delete(outputRoot, recursive: true);
         Console.WriteLine("DRAW COMMAND: configurable Ctrl+Shift+D hotkey and export extensions verified");
         Console.WriteLine("HOTKEY EXCLUSIONS: normalized application matching verified");
-
-        if (new AppSettings().UpdateFeedUrl != AppSettings.DefaultUpdateFeedUrl ||
-            !Uri.TryCreate(AppSettings.DefaultUpdateFeedUrl, UriKind.Absolute, out var updateFeed) ||
-            updateFeed.Scheme != Uri.UriSchemeHttps ||
-            !updateFeed.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)) return 58;
-        var dailyCheckNow = new DateTimeOffset(2026, 7, 21, 12, 0, 0, TimeSpan.Zero);
-        if (new AppSettings().CheckUpdatesDaily ||
-            !UpdateCheckScheduleService.IsDailyCheckDue(null, dailyCheckNow, TimeZoneInfo.Utc) ||
-            UpdateCheckScheduleService.IsDailyCheckDue(dailyCheckNow.AddHours(-6), dailyCheckNow, TimeZoneInfo.Utc) ||
-            !UpdateCheckScheduleService.IsDailyCheckDue(dailyCheckNow.AddDays(-1), dailyCheckNow, TimeZoneInfo.Utc) ||
-            UpdateCheckScheduleService.IsDailyCheckDue(dailyCheckNow.AddHours(1), dailyCheckNow, TimeZoneInfo.Utc)) return 76;
-        var installedExecutable = Path.Combine(Path.GetTempPath(), "SnapAnchorInstalled", "SnapAnchor.exe");
-        var portableExecutable = Path.Combine(Path.GetTempPath(), "SnapAnchorPortable", "SnapAnchor.exe");
-        var portableUrl = UpdateService.ResolvePackageUrl(updateFeed, null, "SnapAnchor-Portable-win-x64.zip");
-        if (UpdateService.IsPortableLocation(installedExecutable, Path.GetDirectoryName(installedExecutable)) ||
-            !UpdateService.IsPortableLocation(portableExecutable, Path.GetDirectoryName(installedExecutable)) ||
-            !portableUrl.Equals("https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Portable-win-x64.zip", StringComparison.OrdinalIgnoreCase)) return 62;
-        Console.WriteLine("UPDATE CHANNEL: startup and once-per-day schedules plus installed/portable package routing verified");
 
         var effectedOutput = CaptureService.ApplyOutputEffects(CreatePatternImage(160, 96), new AppSettings
         {
