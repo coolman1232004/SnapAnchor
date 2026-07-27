@@ -738,6 +738,7 @@ internal static class Program
             transparent.Show();
             transparent.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
             var transparentEditor = (AnnotationEditorControl)transparent.FindName("Editor");
+            AccessibilityService.ApplyToolbar(transparentEditor);
             var transparentImage = (BitmapSource)((Image)transparentEditor.FindName("BackgroundImage")).Source;
             var transparentPixel = new byte[4];
             transparentImage.CopyPixels(new Int32Rect(0, 0, 1, 1), transparentPixel, 4, 0);

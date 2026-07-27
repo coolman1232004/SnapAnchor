@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Single source of truth for every SnapAnchor binary and release package. -->
-    <SnapAnchorVersion>2.1.29</SnapAnchorVersion>
+    <SnapAnchorVersion>2.1.30</SnapAnchorVersion>
     <SnapAnchorMinimumWindowsBuild>17763</SnapAnchorMinimumWindowsBuild>
     <Version>$(SnapAnchorVersion)</Version>
     <AssemblyVersion>$(SnapAnchorVersion).0</AssemblyVersion>
