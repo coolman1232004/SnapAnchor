@@ -34,6 +34,10 @@ internal sealed class ColorMagnifierControl : Border
 
     public ColorMagnifierControl()
     {
+        // The overlay adds this control before its first mouse/update pass. Keep
+        // it out of the visual tree until sampling explicitly makes it visible,
+        // otherwise WPF can paint one frame at Canvas (0, 0) on another monitor.
+        Visibility = System.Windows.Visibility.Collapsed;
         Width = LensSize + 20;
         Background = new SolidColorBrush(Color.FromRgb(0x29, 0x25, 0x24));
         BorderBrush = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));

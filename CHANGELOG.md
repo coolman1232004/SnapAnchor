@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.29] - 2026-07-27
+
+- Prevented the disabled colour picker / magnifier from flashing for one frame at the upper-left corner of another monitor when capture starts.
+- Added a regression check that requires the magnifier visual to start collapsed before the capture overlay is rendered.
+
 ## [2.1.28] - 2026-07-27
 
 - Centralized application, installer, package, documentation, and release-manifest version metadata.

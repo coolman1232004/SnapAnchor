@@ -31,6 +31,11 @@ internal static class Program
         ElementDetectionSmoke.Run();
         UpdateSecuritySmoke.Run();
 
+        var magnifierStartsHidden = RunSta(
+            () => new ColorMagnifierControl().Visibility == Visibility.Collapsed);
+        if (!magnifierStartsHidden) return 87;
+        Console.WriteLine("CAPTURE MAGNIFIER: starts collapsed to prevent a first-frame multi-monitor flash");
+
         var physicalUnion = DisplayTopologyService.UnionBounds(
         [
             new Drawing.Rectangle(-1920, 0, 1920, 1080),
