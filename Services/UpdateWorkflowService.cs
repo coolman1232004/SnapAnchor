@@ -15,13 +15,14 @@ internal static class UpdateWorkflowService
                     MessageBoxButton.OK, MessageBoxImage.Information);
             return false;
         }
-        return RunAvailable(owner, update);
+        return await RunAvailableAsync(owner, update);
     }
 
-    internal static bool RunAvailable(Window owner, UpdateCheckResult update)
+    internal static async Task<bool> RunAvailableAsync(Window owner, UpdateCheckResult update)
     {
         PreparedUpdate? prepared;
-        if (UpdateService.TryLoadPending(update, out var pending))
+        var pending = await UpdateService.TryLoadPendingAsync(update);
+        if (pending is not null)
         {
             prepared = pending;
         }

@@ -1,12 +1,45 @@
 param(
     [string]$DistDirectory = 'dist',
-    [string]$Version = '2.1.21',
+    [string]$Version,
+    [string]$ReleaseNotes,
     [string]$CertificateThumbprint = $env:SNAPANCHOR_CERT_THUMBPRINT
 )
 
 $ErrorActionPreference = 'Stop'
 
 $workspace = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$buildPropsPath = Join-Path $workspace 'Directory.Build.props'
+[xml]$buildProps = Get-Content -LiteralPath $buildPropsPath
+$centralVersion = [string]$buildProps.Project.PropertyGroup.SnapAnchorVersion
+$minimumWindowsBuild = [int]$buildProps.Project.PropertyGroup.SnapAnchorMinimumWindowsBuild
+if ([string]::IsNullOrWhiteSpace($centralVersion)) {
+    throw "SnapAnchorVersion is missing from $buildPropsPath."
+}
+if ([string]::IsNullOrWhiteSpace($Version)) {
+    $Version = $centralVersion
+}
+elseif (-not $Version.Equals($centralVersion, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Requested version $Version does not match the central version $centralVersion."
+}
+if ($Version -notmatch '^\d+\.\d+\.\d+$') {
+    throw "Invalid SnapAnchor version: $Version"
+}
+if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
+    $changeLog = Get-Content -LiteralPath (Join-Path $workspace 'CHANGELOG.md') -Raw
+    $versionPattern = [regex]::Escape($Version)
+    $section = [regex]::Match(
+        $changeLog,
+        "(?ms)^## \[$versionPattern\][^\r\n]*\r?\n(?<body>.*?)(?=^## \[|\z)")
+    if (-not $section.Success) {
+        throw "CHANGELOG.md does not contain release notes for $Version."
+    }
+    $ReleaseNotes = (($section.Groups['body'].Value -split '\r?\n') |
+        Where-Object { $_ -match '^\s*-\s+' } |
+        ForEach-Object { ($_ -replace '^\s*-\s+', '').Trim() }) -join ' '
+}
+if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
+    throw "Release notes for $Version are empty."
+}
 $dist = [System.IO.Path]::GetFullPath((Join-Path $workspace $DistDirectory))
 $staging = [System.IO.Path]::GetFullPath((Join-Path $workspace 'packaging\staging'))
 $setupProject = Join-Path $workspace 'packaging\SnapAnchor.Setup\SnapAnchor.Setup.csproj'
@@ -103,11 +136,11 @@ $manifest = [ordered]@{
     installerSha256 = (Get-FileHash (Join-Path $dist 'SnapAnchor-Setup-win-x64.exe') -Algorithm SHA256).Hash
     portableSize = (Get-Item (Join-Path $dist 'SnapAnchor-Portable-win-x64.zip')).Length
     installerSize = (Get-Item (Join-Path $dist 'SnapAnchor-Setup-win-x64.exe')).Length
-    minimumWindowsBuild = 17763
+    minimumWindowsBuild = $minimumWindowsBuild
     signed = -not [string]::IsNullOrWhiteSpace($CertificateThumbprint)
     downloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Setup-win-x64.exe'
     portableDownloadUrl = 'https://github.com/coolman1232004/SnapAnchor/releases/latest/download/SnapAnchor-Portable-win-x64.zip'
-    releaseNotes = 'SnapAnchor 2.1.21 P1 polish: better first-run tip, capture how-to hints, organised tray menu, stronger toolbar defaults, Print Screen capture hotkey.'
+    releaseNotes = $ReleaseNotes
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $dist 'release.json') -Encoding UTF8
 

@@ -306,7 +306,7 @@ public partial class PreferencesWindow : Window
         if (!previousLanguage.Equals(_settings.UiLanguage, StringComparison.Ordinal))
             restartRequested = LanguageRestartWindow.Ask(this, _settings.UiLanguage);
         DialogResult = true;
-        if (restartRequested) Dispatcher.BeginInvoke(RestartService.RestartApplication);
+        if (restartRequested) Dispatcher.BeginInvoke(() => _ = RestartService.RestartApplicationAsync());
     }
 
     private void BrowseQuick_Click(object sender, RoutedEventArgs e) => BrowseInto(QuickFolderBox);

@@ -9,9 +9,6 @@
     <RootNamespace>SnapAnchor.Setup</RootNamespace>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationIcon>..\..\Assets\SnapAnchor.ico</ApplicationIcon>
-    <Version>2.1.12</Version>
-    <AssemblyVersion>2.1.12.0</AssemblyVersion>
-    <FileVersion>2.1.12.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Payload.zip" LogicalName="SnapAnchor.Payload.zip" />

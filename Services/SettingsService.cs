@@ -6,7 +6,7 @@ namespace SnapAnchor.Services;
 public sealed class AppSettings
 {
     public const string DefaultUpdateFeedUrl = "https://github.com/coolman1232004/SnapAnchor/releases/latest/download/release.json";
-    internal const int CurrentSettingsSchemaVersion = 1;
+    internal const int CurrentSettingsSchemaVersion = 2;
 
     public int SettingsSchemaVersion { get; set; }
     public string CaptureHotkey { get; set; } = "PrintScreen";
@@ -212,12 +212,17 @@ internal static class SettingsService
         // The first dedicated detection preference was accidentally migrated
         // from the unrelated size/dimension checkbox. Repair that migration
         // once, then preserve an explicit detection choice from this version on.
-        if (settings.SettingsSchemaVersion < AppSettings.CurrentSettingsSchemaVersion)
+        if (settings.SettingsSchemaVersion < 1)
         {
             settings.ShowElementDetection = true;
-            settings.SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion;
         }
         settings.ShowElementDetection ??= true;
+        // Schema 2 introduced EnableColorMagnifier while retaining the old
+        // ShowColorSampler JSON name. Copy the user's legacy choice exactly
+        // once before the new property becomes authoritative.
+        if (settings.SettingsSchemaVersion < 2)
+            settings.EnableColorMagnifier = settings.ShowColorSampler;
+        settings.SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion;
         // The original text tool stored its default as Segoe UI at 16 px. Move
         // that untouched legacy default to the Paint-like Calibri 11 preset,
         // while preserving any font or size the user actually customized.

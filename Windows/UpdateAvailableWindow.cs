@@ -41,8 +41,12 @@ internal sealed class UpdateAvailableWindow : Window
         var details = new TextBlock
         {
             Text = LocalizationService.Format("{0} update - Download size: {1}",
-                LocalizationService.Current(update.PackageKind == UpdatePackageKind.Portable ? "Portable" : "Installed"),
-                UpdateService.FormatBytes(update.DownloadSize)),
+                       LocalizationService.Current(update.PackageKind == UpdatePackageKind.Portable ? "Portable" : "Installed"),
+                       UpdateService.FormatBytes(update.DownloadSize)) +
+                   Environment.NewLine +
+                   LocalizationService.Current(update.IsSigned
+                       ? "Digitally signed package"
+                       : "Unsigned package - SHA-256 will be verified before it runs"),
             Foreground = new SolidColorBrush(Color.FromRgb(87, 83, 78)),
             Margin = new Thickness(0, 0, 0, 16)
         };
