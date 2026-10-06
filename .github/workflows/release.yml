@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from Directory.Build.props (for example 2.1.31)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapanchor-release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Validate requested version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content .\Directory.Build.props
+          $version = [string]$props.Project.PropertyGroup.SnapAnchorVersion
+          if ($env:RELEASE_VERSION -notmatch '^\d+\.\d+\.\d+$' -or $env:RELEASE_VERSION -ne $version) {
+            throw "Requested release version does not match the source version $version."
+          }
+          .\Tests\Test-ReleaseMetadata.ps1
+
+      - name: Restore
+        run: dotnet restore .\SnapAnchor.csproj
+
+      - name: Audit dependencies
+        shell: pwsh
+        run: |
+          $audit = dotnet list .\SnapAnchor.csproj package --vulnerable --include-transitive
+          $audit | Write-Host
+          if ($LASTEXITCODE -ne 0 -or $audit -match 'has the following vulnerable packages') {
+            throw 'NuGet vulnerability audit failed.'
+          }
+
+      - name: Build (Release x64)
+        run: dotnet build .\SnapAnchor.csproj -c Release -p:Platform=x64 --no-restore -warnaserror
+
+      - name: Smoke tests
+        shell: pwsh
+        run: .\Tests\Run-Smoke.ps1
+
+      - name: Build Windows packages
+        shell: pwsh
+        run: .\packaging\build-packages.ps1 -Version $env:RELEASE_VERSION
+
+      - name: Validate packages
+        shell: pwsh
+        run: |
+          .\Tests\Test-ReleaseMetadata.ps1 -ManifestPath 'dist\release.json'
+          $manifest = Get-Content .\dist\release.json -Raw | ConvertFrom-Json
+          foreach ($kind in @('portable', 'installer')) {
+            $asset = Get-Item (Join-Path 'dist' $manifest."${kind}File")
+            if ($asset.Length -ne $manifest."${kind}Size" -or
+                (Get-FileHash -LiteralPath $asset.FullName -Algorithm SHA256).Hash -ne $manifest."${kind}Sha256") {
+              throw "Release asset does not match its manifest: $($asset.Name)"
+            }
+          }
+          foreach ($binary in @('dist\SnapAnchor-Portable\SnapAnchor.exe', 'dist\SnapAnchor-Setup-win-x64.exe')) {
+            if ((Get-Item $binary).VersionInfo.FileVersion -ne "$($env:RELEASE_VERSION).0") {
+              throw "Release binary has an unexpected version: $binary"
+            }
+          }
+
+      - name: Publish release with verified assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $version = $env:RELEASE_VERSION
+          $tag = "v$version"
+          $previousTag = gh release view --json tagName --jq '.tagName'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not determine the previous release.' }
+          $changelog = Get-Content .\CHANGELOG.md -Raw
+          $pattern = '(?ms)^## \[' + [regex]::Escape($version) + '\][^\r\n]*\r?\n(?<body>.*?)(?=^## \[|\z)'
+          $section = [regex]::Match($changelog, $pattern)
+          if (-not $section.Success -or [string]::IsNullOrWhiteSpace($section.Groups['body'].Value)) {
+            throw "Release notes not found for $version."
+          }
+          $notesPath = Join-Path $env:RUNNER_TEMP 'SnapAnchor-release-notes.md'
+          $notes = "## SnapAnchor $version`n`n" + $section.Groups['body'].Value.Trim() + "`n`n"
+          $notes += 'Portable ZIP and Windows installer are attached below. This release is not code-signed; SnapAnchor verifies update packages using the SHA-256 values in `release.json`.'
+          $notes += "`n`nFull changelog: https://github.com/$env:GH_REPO/compare/$previousTag...$tag`n"
+          Set-Content -LiteralPath $notesPath -Value $notes -Encoding UTF8
+          gh release create $tag --target $env:GITHUB_SHA --draft --title "SnapAnchor $version" --notes-file $notesPath
+          if ($LASTEXITCODE -ne 0) { throw 'Release draft creation failed; existing releases are never overwritten.' }
+          gh release upload $tag .\dist\SnapAnchor-Portable-win-x64.zip .\dist\SnapAnchor-Setup-win-x64.exe .\dist\release.json
+          if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed; the release remains a draft.' }
+          $release = gh api "repos/$env:GH_REPO/releases/tags/$tag" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not verify uploaded release assets.' }
+          foreach ($expected in @('SnapAnchor-Portable-win-x64.zip', 'SnapAnchor-Setup-win-x64.exe', 'release.json')) {
+            $localAsset = Get-Item (Join-Path 'dist' $expected)
+            $uploaded = @($release.assets | Where-Object name -eq $expected)
+            $localDigest = 'sha256:' + (Get-FileHash -LiteralPath $localAsset.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($uploaded.Count -ne 1 -or $uploaded[0].state -ne 'uploaded' -or
+                $uploaded[0].size -ne $localAsset.Length -or $uploaded[0].digest -ne $localDigest) {
+              throw "Uploaded release asset is incomplete: $expected"
+            }
+          }
+          gh release edit $tag --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed; the release remains a draft.' }
