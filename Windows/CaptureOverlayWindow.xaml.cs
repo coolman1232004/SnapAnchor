@@ -735,61 +735,85 @@ public partial class CaptureOverlayWindow : Window
         Focus();
     }
 
-    private void StoreCaptureAnnotation(AnnotationAppliedEventArgs document)
+    private readonly SemaphoreSlim _annotationStoreGate = new(1, 1);
+    private bool _captureActionRunning;
+
+    private async void StoreCaptureAnnotation(AnnotationAppliedEventArgs document)
+        => await RunCaptureActionAsync(() => StoreCaptureAnnotationAsync(document, "Edited"));
+
+    private async Task StoreCaptureAnnotationAsync(AnnotationAppliedEventArgs document, string sourceKind)
     {
-        if (string.IsNullOrWhiteSpace(_annotationHistoryRecordId))
-            _annotationHistoryRecordId = HistoryService.Add(document.BaseImage, SelectedPixelRegion(), _screen, "Edited").Id;
-        HistoryService.SaveAnnotationDocument(_annotationHistoryRecordId, document.BaseImage, document.FlattenedImage, document.Items);
+        var region = SelectedPixelRegion();
+        await _annotationStoreGate.WaitAsync();
+        try
+        {
+            _annotationHistoryRecordId = await HistoryService.StoreDocumentAsync(_annotationHistoryRecordId,
+                document.BaseImage, document.FlattenedImage, document.Items, sourceKind, region, _screen);
+        }
+        finally { _annotationStoreGate.Release(); }
     }
 
-    private void ApplyCaptureAnnotation(AnnotationAppliedEventArgs document)
-    {
-        StoreCaptureAnnotation(document);
-        if (_annotationHistoryRecordId is { } id) HistoryService.UpdateSourceKind(id, "Edited");
-        HistoryService.RememberLastRegion(SelectedPixelRegion());
-        AutoSave(document.FlattenedImage);
-        Close();
-    }
+    private async void ApplyCaptureAnnotation(AnnotationAppliedEventArgs document)
+        => await RunCaptureActionAsync(async () =>
+        {
+            await StoreCaptureAnnotationAsync(document, "Edited");
+            await AutoSaveAsync(document.FlattenedImage);
+            Close();
+        });
 
-    private BitmapSource CurrentResultImage(out bool annotationStored)
+    private async Task<(BitmapSource Image, bool AnnotationStored)> CurrentResultImageAsync(string sourceKind)
     {
-        annotationStored = false;
-        if (!_annotationMode) return SelectedImage();
+        if (!_annotationMode) return (SelectedImage(), false);
         var document = CaptureInlineEditor.SnapshotDocument();
-        StoreCaptureAnnotation(document);
-        annotationStored = true;
-        return document.FlattenedImage;
+        await StoreCaptureAnnotationAsync(document, sourceKind);
+        return (document.FlattenedImage, true);
+    }
+
+    private async Task RunCaptureActionAsync(Func<Task> action)
+    {
+        if (_captureActionRunning) return;
+        _captureActionRunning = true;
+        ActionBar.IsEnabled = false;
+        CaptureInlineEditor.IsEnabled = false;
+        try { await action(); }
+        catch (Exception ex)
+        {
+            DiagnosticsService.Log("capture-save", "Could not save the capture.", ex);
+            MessageBox.Show(ex.Message, L("SnapAnchor"), MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        finally { _captureActionRunning = false; ActionBar.IsEnabled = true; CaptureInlineEditor.IsEnabled = true; }
     }
 
     private void Pin_Click(object sender, RoutedEventArgs e) => PinSelection(asThumbnail: false);
 
     private void PinThumbnail_Click(object sender, RoutedEventArgs e) => PinSelection(asThumbnail: true);
 
-    private void PinSelection(bool asThumbnail)
+    private async void PinSelection(bool asThumbnail)
     {
-        var image = CurrentResultImage(out var annotationStored);
-        Clipboard.SetImage(image);
-        string? historyRecordId;
-        if (!annotationStored)
-            historyRecordId = HistoryService.Add(image, SelectedPixelRegion(), _screen, "Pinned").Id;
-        else
+        await RunCaptureActionAsync(async () =>
         {
-            historyRecordId = _annotationHistoryRecordId;
-            if (historyRecordId is { } annotatedId) HistoryService.UpdateSourceKind(annotatedId, "Pinned");
-        }
-        HistoryService.RememberLastRegion(SelectedPixelRegion());
-        AutoSave(image);
-        var pixelRegion = SelectedPixelRegion();
-        var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
-        var pinBounds = new System.Drawing.Rectangle(
-            virtualBounds.Left + pixelRegion.X,
-            virtualBounds.Top + pixelRegion.Y,
-            pixelRegion.Width,
-            pixelRegion.Height);
-        Close();
-        var pin = new PinnedImageWindow(image, historyRecordId: historyRecordId, initialScreenPixelBounds: pinBounds);
-        pin.Show();
-        if (asThumbnail) pin.SetThumbnailMode(true);
+            var pixelRegion = SelectedPixelRegion();
+            var (image, annotationStored) = await CurrentResultImageAsync("Pinned");
+            Clipboard.SetImage(image);
+            string? historyRecordId;
+            if (!annotationStored)
+                historyRecordId = (await HistoryService.AddAsync(image, pixelRegion, _screen, "Pinned")).Id;
+            else
+            {
+                historyRecordId = _annotationHistoryRecordId;
+            }
+            await AutoSaveAsync(image);
+            var virtualBounds = DisplayTopologyService.VirtualBoundsPixels();
+            var pinBounds = new System.Drawing.Rectangle(
+                virtualBounds.Left + pixelRegion.X,
+                virtualBounds.Top + pixelRegion.Y,
+                pixelRegion.Width,
+                pixelRegion.Height);
+            Close();
+            var pin = new PinnedImageWindow(image, historyRecordId: historyRecordId, initialScreenPixelBounds: pinBounds);
+            pin.Show();
+            if (asThumbnail) pin.SetThumbnailMode(true);
+        });
     }
 
     private void CycleRegionHistory(int direction)
@@ -831,46 +855,59 @@ public partial class CaptureOverlayWindow : Window
         };
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private async void Save_Click(object sender, RoutedEventArgs e)
     {
         var dialog = CreateImageSaveDialog();
         if (dialog.ShowDialog(this) != true) return;
-        var image = CurrentResultImage(out var annotationStored);
-        CaptureService.SaveImage(image, dialog.FileName, _settings.ImageQuality, _settings);
-        if (!annotationStored) HistoryService.Add(image, SelectedPixelRegion(), _screen, "Saved");
-        else if (_annotationHistoryRecordId is { } annotatedId) HistoryService.UpdateSourceKind(annotatedId, "Saved");
-        HistoryService.RememberLastRegion(SelectedPixelRegion());
-        Close();
+        await RunCaptureActionAsync(async () =>
+        {
+            var region = SelectedPixelRegion();
+            var (image, annotationStored) = await CurrentResultImageAsync("Saved");
+            await SaveOutputAsync(image, dialog.FileName);
+            if (!annotationStored) await HistoryService.AddAsync(image, region, _screen, "Saved");
+            Close();
+        });
     }
 
-    private void QuickSave_Click(object sender, RoutedEventArgs e)
+    private async void QuickSave_Click(object sender, RoutedEventArgs e)
     {
-        var image = CurrentResultImage(out var annotationStored);
-        var path = SettingsService.CreateOutputPath(_settings.QuickSaveFolder, _settings.OutputFileName);
-        CaptureService.SaveImage(image, path, _settings.ImageQuality, _settings);
-        Clipboard.SetImage(image);
-        if (!annotationStored) HistoryService.Add(image, SelectedPixelRegion(), _screen, "Saved");
-        else if (_annotationHistoryRecordId is { } annotatedId) HistoryService.UpdateSourceKind(annotatedId, "Saved");
-        HistoryService.RememberLastRegion(SelectedPixelRegion());
-        if (_settings.ShowSaveNotification) System.Media.SystemSounds.Asterisk.Play();
-        Close();
+        await RunCaptureActionAsync(async () =>
+        {
+            var region = SelectedPixelRegion();
+            var (image, annotationStored) = await CurrentResultImageAsync("Saved");
+            var path = SettingsService.CreateOutputPath(_settings.QuickSaveFolder, _settings.OutputFileName);
+            await SaveOutputAsync(image, path);
+            Clipboard.SetImage(image);
+            if (!annotationStored) await HistoryService.AddAsync(image, region, _screen, "Saved");
+            if (_settings.ShowSaveNotification) System.Media.SystemSounds.Asterisk.Play();
+            Close();
+        });
     }
 
-    private void CompleteCopy()
+    private async void CompleteCopy()
     {
-        var image = CurrentResultImage(out var annotationStored);
-        Clipboard.SetImage(image);
-        if (!annotationStored) HistoryService.Add(image, SelectedPixelRegion(), _screen, "Copied");
-        else if (_annotationHistoryRecordId is { } annotatedId) HistoryService.UpdateSourceKind(annotatedId, "Copied");
-        HistoryService.RememberLastRegion(SelectedPixelRegion());
-        AutoSave(image);
-        Close();
+        await RunCaptureActionAsync(async () =>
+        {
+            var region = SelectedPixelRegion();
+            var (image, annotationStored) = await CurrentResultImageAsync("Copied");
+            Clipboard.SetImage(image);
+            if (!annotationStored) await HistoryService.AddAsync(image, region, _screen, "Copied");
+            await AutoSaveAsync(image);
+            Close();
+        });
     }
 
-    private void AutoSave(BitmapSource image)
+    private Task AutoSaveAsync(BitmapSource image)
     {
-        if (!_settings.AutoSave || string.IsNullOrWhiteSpace(_settings.AutoSaveFolder)) return;
-        CaptureService.SaveImage(image, SettingsService.CreateOutputPath(_settings.AutoSaveFolder, _settings.OutputFileName), _settings.ImageQuality, _settings);
+        if (!_settings.AutoSave || string.IsNullOrWhiteSpace(_settings.AutoSaveFolder)) return Task.CompletedTask;
+        return SaveOutputAsync(image, SettingsService.CreateOutputPath(_settings.AutoSaveFolder, _settings.OutputFileName));
+    }
+
+    private Task SaveOutputAsync(BitmapSource image, string path)
+    {
+        var settings = SettingsService.Load();
+        if (!image.IsFrozen) { image = image.Clone(); image.Freeze(); }
+        return PersistenceQueue.Run(() => CaptureService.SaveImage(image, path, settings.ImageQuality, settings));
     }
 
     private static void TrySetBrush(DependencyObject target, DependencyProperty property, string value)

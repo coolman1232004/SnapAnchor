@@ -13,6 +13,7 @@ public partial class AnnotationEditorControl
     private void PushUndo()
     {
         _undo.Push(Clone(_items));
+        TrimUndo(_undo);
         _redo.Clear();
     }
 
@@ -24,6 +25,7 @@ public partial class AnnotationEditorControl
         CommitTextEditor();
         if (_undo.Count == 0) return;
         _redo.Push(Clone(_items));
+        TrimUndo(_redo);
         _items = _undo.Pop();
         _selectedId = null;
         RenderAnnotations();
@@ -34,6 +36,7 @@ public partial class AnnotationEditorControl
         CommitTextEditor();
         if (_redo.Count == 0) return;
         _undo.Push(Clone(_items));
+        TrimUndo(_undo);
         _items = _redo.Pop();
         _selectedId = null;
         RenderAnnotations();
@@ -68,6 +71,23 @@ public partial class AnnotationEditorControl
         }
     }
 
+    private static void TrimUndo(Stack<List<AnnotationItem>> stack)
+    {
+        const long budget = 16 * 1024 * 1024;
+        var keep = new List<List<AnnotationItem>>();
+        long bytes = 0;
+        foreach (var snapshot in stack)
+        {
+            var size = snapshot.Sum(item => 256L + item.Points.Count * 16L + item.Text.Length * 2L);
+            if (keep.Count >= 100 || (keep.Count > 0 && bytes + size > budget)) break;
+            keep.Add(snapshot);
+            bytes += size;
+        }
+        if (keep.Count == stack.Count) return;
+        stack.Clear();
+        for (var index = keep.Count - 1; index >= 0; index--) stack.Push(keep[index]);
+    }
+
     internal AnnotationAppliedEventArgs SnapshotDocument()
     {
         var image = Flatten();
@@ -96,14 +116,22 @@ public partial class AnnotationEditorControl
         };
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private async void Save_Click(object sender, RoutedEventArgs e)
     {
         var dialog = CreateImageSaveDialog();
         if (dialog.ShowDialog(Window.GetWindow(this)) == true)
         {
             var image = Flatten();
-            CaptureService.SaveImage(image, dialog.FileName, _settings.ImageQuality, _settings);
-            DocumentStored?.Invoke(new AnnotationAppliedEventArgs(_source, image, Clone(_items)));
+            var document = new AnnotationAppliedEventArgs(_source, image, Clone(_items));
+            var settings = SettingsService.Load();
+            IsEnabled = false;
+            try
+            {
+                await PersistenceQueue.Run(() => CaptureService.SaveImage(image, dialog.FileName, settings.ImageQuality, settings));
+                DocumentStored?.Invoke(document);
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message, LocalizationService.Current("SnapAnchor"), MessageBoxButton.OK, MessageBoxImage.Information); }
+            finally { IsEnabled = true; }
         }
     }
 

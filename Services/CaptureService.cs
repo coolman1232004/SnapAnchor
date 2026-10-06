@@ -46,7 +46,13 @@ internal static partial class CaptureService
 
     private static BitmapSource CaptureBounds(Drawing.Rectangle bounds, bool includeCursor)
     {
-        var settings = SettingsService.Load();
+        var settings = SettingsService.Read(current => new AppSettings
+        {
+            PreferDxgiCapture = current.PreferDxgiCapture,
+            CorrectHdrColors = current.CorrectHdrColors,
+            ExcludeSnapAnchorFromCapture = current.ExcludeSnapAnchorFromCapture,
+            CaptureExcludedProcesses = current.CaptureExcludedProcesses.ToList()
+        });
         // GDI first (fast path). DXGI only when opted in and GDI looks blank —
         // hard full-screen DirectX cases — never as the default hot path.
         var source = CaptureBoundsGdi(bounds, includeCursor);

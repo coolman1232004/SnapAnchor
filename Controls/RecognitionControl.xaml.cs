@@ -46,7 +46,7 @@ public partial class RecognitionControl : UserControl
     {
         if (!_loaded || _image is null) return;
         _cancellation?.Cancel();
-        _cancellation = new CancellationTokenSource();
+        var cancellation = _cancellation = new CancellationTokenSource();
         ScanButton.IsEnabled = false;
         CopyButton.IsEnabled = SearchButton.IsEnabled = OpenButton.IsEnabled = false;
         StatusText.Text = L("Recognizing locally…");
@@ -55,7 +55,9 @@ public partial class RecognitionControl : UserControl
         try
         {
             var language = LanguageBox.SelectedValue as string ?? "eng";
-            _result = await RecognitionService.RecognizeAsync(_image, language, _cancellation.Token);
+            var result = await RecognitionService.RecognizeAsync(_image, language, cancellation.Token);
+            if (cancellation.IsCancellationRequested || !ReferenceEquals(_cancellation, cancellation)) return;
+            _result = result;
             ResultBox.Text = FormatResult(_result);
             var content = _result.HasContent;
             CopyButton.IsEnabled = content;
@@ -68,15 +70,16 @@ public partial class RecognitionControl : UserControl
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = L("Recognition cancelled.");
+            if (ReferenceEquals(_cancellation, cancellation)) StatusText.Text = L("Recognition cancelled.");
         }
         catch (Exception ex)
         {
-            StatusText.Text = LocalizationService.Format("Recognition failed: {0}", DeepestMessage(ex));
+            if (ReferenceEquals(_cancellation, cancellation)) StatusText.Text = LocalizationService.Format("Recognition failed: {0}", DeepestMessage(ex));
         }
         finally
         {
-            ScanButton.IsEnabled = true;
+            if (ReferenceEquals(_cancellation, cancellation)) { ScanButton.IsEnabled = true; _cancellation = null; }
+            cancellation.Dispose();
         }
     }
 

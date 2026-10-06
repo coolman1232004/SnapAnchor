@@ -12,7 +12,10 @@ internal sealed class StreamingGifWriter : IDisposable
     private readonly FileStream _stream;
     private readonly int _width;
     private readonly int _height;
-    private readonly ushort _delay;
+    private readonly TimeSpan _frameDuration;
+    private double _delayRemainder;
+    private readonly byte[] _indices;
+    private readonly byte[] _row;
     private bool _completed;
 
     public StreamingGifWriter(string path, int width, int height, TimeSpan frameDuration)
@@ -23,18 +26,26 @@ internal sealed class StreamingGifWriter : IDisposable
         _stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 64 * 1024, FileOptions.SequentialScan);
         _width = width;
         _height = height;
-        _delay = (ushort)Math.Clamp((int)Math.Round(frameDuration.TotalMilliseconds / 10d), 2, ushort.MaxValue);
+        _frameDuration = frameDuration;
+        _indices = new byte[checked(width * height)];
+        _row = new byte[checked(width * 4)];
         WriteHeader();
     }
 
     public void AppendFrame(BitmapSource source)
+        => AppendFrame(source, _frameDuration);
+
+    public void AppendFrame(BitmapSource source, TimeSpan duration)
     {
         ObjectDisposedException.ThrowIf(_completed, this);
         if (source.PixelWidth != _width || source.PixelHeight != _height)
             throw new ArgumentException("Every GIF frame must have the same pixel dimensions.", nameof(source));
 
         _stream.Write([0x21, 0xF9, 0x04, 0x04]);
-        WriteUInt16(_delay);
+        var exactDelay = Math.Max(2, duration.TotalMilliseconds / 10d) + _delayRemainder;
+        var delay = (ushort)Math.Clamp((int)Math.Round(exactDelay), 2, ushort.MaxValue);
+        _delayRemainder = exactDelay - delay;
+        WriteUInt16(delay);
         _stream.WriteByte(0);
         _stream.WriteByte(0);
 
@@ -97,8 +108,8 @@ internal sealed class StreamingGifWriter : IDisposable
             bgra = converted;
         }
 
-        var indices = new byte[_width * _height];
-        var row = new byte[_width * 4];
+        var indices = _indices;
+        var row = _row;
         for (var y = 0; y < _height; y++)
         {
             bgra.CopyPixels(new Int32Rect(0, y, _width, 1), row, row.Length, 0);

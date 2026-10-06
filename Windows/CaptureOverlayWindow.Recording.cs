@@ -62,8 +62,8 @@ public partial class CaptureOverlayWindow
                 : await ScreenRecordingService.CaptureGifAsync(
                     screenRegion,
                     _settings,
-                    () => _recordingPaused,
-                    () => _recordingStopRequested,
+                    () => Volatile.Read(ref _recordingPaused),
+                    () => Volatile.Read(ref _recordingStopRequested),
                     (elapsed, frames) => Dispatcher.BeginInvoke(() =>
                     {
                         RecordingTimerText.Text = elapsed.ToString(@"mm\:ss");
@@ -81,7 +81,7 @@ public partial class CaptureOverlayWindow
                 result = reviewed;
             }
             RecordingTimerText.Text = L("Saving…");
-            HistoryService.AddRecording(result.Preview, result.FilePath, result.Duration, result.FrameCount);
+            await HistoryService.AddRecordingAsync(result.Preview, result.FilePath, result.Duration, result.FrameCount);
             System.Media.SystemSounds.Asterisk.Play();
             Close();
         }

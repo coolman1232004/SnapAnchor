@@ -16,6 +16,21 @@ namespace SnapAnchor.Controls;
 
 public partial class AnnotationEditorControl
 {
+    private System.Windows.Threading.DispatcherTimer? _styleSaveTimer;
+    private void QueueStyleSave()
+    {
+        if (_styleSaveTimer is null)
+        {
+            _styleSaveTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _styleSaveTimer.Tick += (_, _) => { _styleSaveTimer.Stop(); SettingsService.Save(_settings); };
+            Unloaded += (_, _) =>
+            {
+                if (_styleSaveTimer.IsEnabled) { _styleSaveTimer.Stop(); SettingsService.Save(_settings); }
+            };
+        }
+        _styleSaveTimer.Stop();
+        _styleSaveTimer.Start();
+    }
     private void LoadStyleSettings()
     {
         _fillEnabled = _settings.AnnotationFillEnabled;
@@ -188,7 +203,7 @@ public partial class AnnotationEditorControl
         _settings.AnnotationBlurSize = _toolSizes["Blur"];
         _settings.AnnotationTextSize = _toolSizes["Text"];
         _settings.AnnotationEraserSize = _toolSizes["Eraser"];
-        SettingsService.Save(_settings);
+        QueueStyleSave();
     }
 
     private static Brush BrushFrom(string color)

@@ -83,6 +83,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Margin="0,0,0,16">
@@ -221,5 +222,10 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+            <Button x:Name="PreviousPageButton" Content="←" ToolTip="Previous" Click="PreviousPage_Click" Width="44" Style="{StaticResource PillButton}"/>
+            <TextBlock x:Name="PageText" VerticalAlignment="Center" Margin="16,0"/>
+            <Button x:Name="NextPageButton" Content="→" ToolTip="Next" Click="NextPage_Click" Width="44" Style="{StaticResource PillButton}"/>
+        </StackPanel>
     </Grid>
 </Window>

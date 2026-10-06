@@ -37,6 +37,9 @@ public partial class PinnedImageWindow : Window
     private string _inlineMode = "None";
     private string? _historyRecordId;
     private string _lastRecognitionFingerprint = string.Empty;
+    private readonly SemaphoreSlim _historyWriteGate = new(1, 1);
+    private bool _refreshRunning;
+    private static bool _restoringSession;
     private bool _grayscale;
     private bool _inverted;
     private bool _clickThrough;
@@ -349,35 +352,43 @@ public partial class PinnedImageWindow : Window
         return PinSessionService.QueueSave(snapshots, fingerprint);
     }
 
-    public static void RestoreSession()
+    public static async void RestoreSession()
     {
-        if (OpenPins.Count > 0 || !SettingsService.Load().AutoBackup) return;
-        foreach (var (image, item) in PinSessionService.Load())
+        if (_restoringSession || OpenPins.Count > 0 || !SettingsService.Load().AutoBackup) return;
+        _restoringSession = true;
+        try
         {
-            var pin = new PinnedImageWindow(image, false, item.Group, item.Background, item.HistoryRecordId,
-                applyTextSelectableDefault: false)
-            {
-                Opacity = item.Opacity,
-                Topmost = item.Topmost
-            };
-            pin.RestoreSessionState(item);
-            if (item.PhysicalWidth <= 0 || item.PhysicalHeight <= 0)
-                pin.SetInitialBounds(new Rect(item.Left, item.Top, item.Width, item.Height));
-            pin.Show();
-            pin.RestorePhysicalPlacement(item);
-            pin.Dispatcher.BeginInvoke(() =>
-            {
-                if (pin._longScrollable && item.LongScrollOffset > 0)
-                    pin.LongImageViewer.ScrollToVerticalOffset(item.LongScrollOffset);
-                if (item.ClickThrough) pin.SetClickThrough(true);
-                if (!item.IsVisible) pin.Hide();
-            }, DispatcherPriority.Loaded);
+            var restored = await Task.Run(PinSessionService.Load);
+            if (OpenPins.Count > 0) return;
             var settings = SettingsService.Load();
-            var desktop = settings.PinGroupsFollowVirtualDesktops
-                ? VirtualDesktopService.BoundDesktop(settings, item.Group)
-                : Guid.TryParse(item.DesktopId, out var restoredDesktop) ? restoredDesktop : null;
-            if (desktop is { } desktopId) pin.MoveToDesktop(desktopId);
+            foreach (var (image, item) in restored)
+            {
+                var pin = new PinnedImageWindow(image, false, item.Group, item.Background, item.HistoryRecordId,
+                    applyTextSelectableDefault: false)
+                {
+                    Opacity = item.Opacity,
+                    Topmost = item.Topmost
+                };
+                pin.RestoreSessionState(item);
+                if (item.PhysicalWidth <= 0 || item.PhysicalHeight <= 0)
+                    pin.SetInitialBounds(new Rect(item.Left, item.Top, item.Width, item.Height));
+                pin.Show();
+                pin.RestorePhysicalPlacement(item);
+                _ = pin.Dispatcher.BeginInvoke(() =>
+                {
+                    if (pin._longScrollable && item.LongScrollOffset > 0)
+                        pin.LongImageViewer.ScrollToVerticalOffset(item.LongScrollOffset);
+                    if (item.ClickThrough) pin.SetClickThrough(true);
+                    if (!item.IsVisible) pin.Hide();
+                }, DispatcherPriority.Loaded);
+                var desktop = settings.PinGroupsFollowVirtualDesktops
+                    ? VirtualDesktopService.BoundDesktop(settings, item.Group)
+                    : Guid.TryParse(item.DesktopId, out var restoredDesktop) ? restoredDesktop : null;
+                if (desktop is { } desktopId) pin.MoveToDesktop(desktopId);
+            }
         }
+        catch (Exception ex) { DiagnosticsService.Log("session-restore", "Could not restore the pin session.", ex); }
+        finally { _restoringSession = false; }
     }
 
     private void RestorePhysicalPlacement(PinSessionItem item)
@@ -647,43 +658,74 @@ public partial class PinnedImageWindow : Window
         ExitInlineMode();
     }
 
-    private void PersistEditedDocument(SnapAnchor.Controls.AnnotationAppliedEventArgs document)
+    private async void PersistEditedDocument(SnapAnchor.Controls.AnnotationAppliedEventArgs document)
     {
-        if (string.IsNullOrWhiteSpace(_historyRecordId))
-            _historyRecordId = HistoryService.Add(document.BaseImage, sourceKind: "Edited").Id;
-        HistoryService.SaveAnnotationDocument(_historyRecordId, document.BaseImage, document.FlattenedImage, document.Items);
-        HistoryService.UpdateSourceKind(_historyRecordId, "Edited");
+        await _historyWriteGate.WaitAsync();
+        try
+        {
+            _historyRecordId = await HistoryService.StoreDocumentAsync(_historyRecordId, document.BaseImage,
+                document.FlattenedImage, document.Items, "Edited");
+            SaveSession();
+        }
+        catch (Exception ex) { ReportPersistenceError(ex); }
+        finally { _historyWriteGate.Release(); }
     }
 
-    private void ApplyCroppedImage(BitmapSource image)
+    private async void ApplyCroppedImage(BitmapSource image)
     {
         var displayWidth = Width;
         _normalHeight = Math.Max(60, displayWidth * image.PixelHeight / Math.Max(1, image.PixelWidth));
         SetBaseImage(image);
-        _historyRecordId = HistoryService.Add(image, sourceKind: "Edited").Id;
         ExitInlineMode();
+        await _historyWriteGate.WaitAsync();
+        try
+        {
+            var record = await HistoryService.AddAsync(image, sourceKind: "Edited");
+            if (ReferenceEquals(_baseSource, image)) { _historyRecordId = record.Id; SaveSession(); }
+        }
+        catch (Exception ex) { ReportPersistenceError(ex); }
+        finally { _historyWriteGate.Release(); }
     }
 
-    private void Recognition_Completed(object? sender, SnapAnchor.Controls.RecognitionCompletedEventArgs e)
+    private async void Recognition_Completed(object? sender, SnapAnchor.Controls.RecognitionCompletedEventArgs e)
     {
-        PersistRecognitionResult(e.Result);
+        await PersistRecognitionResultAsync(e.Result);
     }
 
-    private void PersistRecognitionResult(RecognitionResult result)
+    private async Task PersistRecognitionResultAsync(RecognitionResult result)
     {
         if (!result.HasContent) return;
         var fingerprint = $"{result.Text}\n{result.BarcodeFormat}\n{result.BarcodeText}";
         if (fingerprint == _lastRecognitionFingerprint) return;
-        _lastRecognitionFingerprint = fingerprint;
-        if (string.IsNullOrWhiteSpace(_historyRecordId))
-            _historyRecordId = HistoryService.SaveRecognition(_source, result.Text, result.BarcodeText, result.BarcodeFormat).Id;
-        else
-            HistoryService.UpdateRecognition(_historyRecordId, result.Text, result.BarcodeText, result.BarcodeFormat);
+        var source = _source;
+        await _historyWriteGate.WaitAsync();
+        try
+        {
+            if (!ReferenceEquals(source, _source) || fingerprint == _lastRecognitionFingerprint) return;
+            if (string.IsNullOrWhiteSpace(_historyRecordId))
+                _historyRecordId = (await HistoryService.SaveRecognitionAsync(source, result.Text, result.BarcodeText, result.BarcodeFormat)).Id;
+            else
+            {
+                var id = _historyRecordId;
+                await PersistenceQueue.Run(() => HistoryService.UpdateRecognition(id, result.Text, result.BarcodeText, result.BarcodeFormat));
+            }
+            _lastRecognitionFingerprint = fingerprint;
+            SaveSession();
+        }
+        catch (Exception ex) { ReportPersistenceError(ex); }
+        finally { _historyWriteGate.Release(); }
+    }
+
+    private void ReportPersistenceError(Exception exception)
+    {
+        DiagnosticsService.Log("pin-save", "Could not save the pinned image.", exception);
+        if (OpenPins.Contains(this)) ShowPinStatus(exception.Message);
     }
 
     private void SetBaseImage(BitmapSource image)
     {
         InvalidateSelectableText();
+        _lastRecognitionFingerprint = string.Empty;
         _baseSource = image;
         _grayscale = _inverted = false;
         ApplyFilters();
@@ -826,17 +868,21 @@ public partial class PinnedImageWindow : Window
 
     private IEnumerable<PinnedImageWindow> Targets() => SelectedPins.Contains(this) ? SelectedPins : [this];
 
-    private void CopyTargetsAsFiles()
+    private async void CopyTargetsAsFiles()
     {
-        var directory = Path.Combine(Path.GetTempPath(), "SnapAnchor", "ClipboardFiles", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-        var files = ExportTargets(directory, Targets().ToList(), forcePng: true);
-        var dropList = new System.Collections.Specialized.StringCollection();
-        dropList.AddRange(files.ToArray());
-        Clipboard.SetFileDropList(dropList);
+        try
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "SnapAnchor", "ClipboardFiles", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            var files = await ExportTargetsAsync(directory, Targets().ToList(), forcePng: true);
+            var dropList = new System.Collections.Specialized.StringCollection();
+            dropList.AddRange(files.ToArray());
+            Clipboard.SetFileDropList(dropList);
+        }
+        catch (Exception ex) { ReportPersistenceError(ex); }
     }
 
-    private void ExportSelectedImages()
+    private async void ExportSelectedImages()
     {
         using var dialog = new Forms.FolderBrowserDialog
         {
@@ -844,24 +890,37 @@ public partial class PinnedImageWindow : Window
             Description = "Choose a folder for the selected SnapAnchor images"
         };
         if (dialog.ShowDialog() != Forms.DialogResult.OK) return;
-        ExportTargets(dialog.SelectedPath, Targets().ToList(), forcePng: false);
-        System.Media.SystemSounds.Asterisk.Play();
+        try
+        {
+            await ExportTargetsAsync(dialog.SelectedPath, Targets().ToList(), forcePng: false);
+            System.Media.SystemSounds.Asterisk.Play();
+        }
+        catch (Exception ex) { ReportPersistenceError(ex); }
     }
 
-    private static IReadOnlyList<string> ExportTargets(string directory, IReadOnlyList<PinnedImageWindow> pins, bool forcePng)
+    private static Task<IReadOnlyList<string>> ExportTargetsAsync(string directory, IReadOnlyList<PinnedImageWindow> pins, bool forcePng)
     {
-        Directory.CreateDirectory(directory);
-        var settings = SettingsService.Load();
-        var extension = forcePng ? ".png" : CaptureService.ExtensionForFormat(settings.OutputFormat);
-        var stamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff");
-        var paths = new List<string>(pins.Count);
-        for (var index = 0; index < pins.Count; index++)
+        var images = pins.Select(pin =>
         {
-            var path = Path.Combine(directory, $"SnapAnchor_{stamp}_{index + 1:D2}{extension}");
-            CaptureService.SaveImage(pins[index]._source, path, settings.ImageQuality, settings);
-            paths.Add(path);
-        }
-        return paths;
+            var image = pin._source;
+            if (!image.IsFrozen) { image = image.Clone(); image.Freeze(); }
+            return image;
+        }).ToList();
+        var settings = SettingsService.Load();
+        return PersistenceQueue.Run<IReadOnlyList<string>>(() =>
+        {
+            Directory.CreateDirectory(directory);
+            var extension = forcePng ? ".png" : CaptureService.ExtensionForFormat(settings.OutputFormat);
+            var stamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff");
+            var paths = new List<string>(images.Count);
+            for (var index = 0; index < images.Count; index++)
+            {
+                var path = Path.Combine(directory, $"SnapAnchor_{stamp}_{index + 1:D2}{extension}");
+                CaptureService.SaveImage(images[index], path, settings.ImageQuality, settings);
+                paths.Add(path);
+            }
+            return paths;
+        });
     }
 
     internal bool CanRefreshScreenshot => RefreshRecord() is not null;
@@ -880,14 +939,27 @@ public partial class PinnedImageWindow : Window
         RefreshScreenshot();
     }
 
-    private void RefreshScreenshot(bool silent = false)
+    private async void RefreshScreenshot(bool silent = false)
     {
+        if (_refreshRunning || _inlineMode != "None") return;
+        _refreshRunning = true;
+        var source = _source;
+        await _historyWriteGate.WaitAsync();
         try
         {
-            if (RefreshRecord() is not { SourceRegion: { } region } record) return;
-            var context = CaptureService.CaptureVirtualScreen();
-            var freshBase = CaptureService.Crop(context, new Int32Rect(region.X, region.Y, region.Width, region.Height));
-            var annotations = HistoryService.LoadAnnotations(record);
+            var id = _historyRecordId;
+            var record = await Task.Run(() => string.IsNullOrWhiteSpace(id) ? null : HistoryService.Find(id));
+            if (record?.SourceRegion is not { } region) return;
+            var freshBase = await Task.Run(() =>
+            {
+                var bounds = DisplayTopologyService.VirtualBoundsPixels();
+                var selected = Rect.Intersect(new Rect(bounds.Left + region.X, bounds.Top + region.Y, region.Width, region.Height),
+                    new Rect(bounds.Left, bounds.Top, bounds.Width, bounds.Height));
+                if (selected.IsEmpty) throw new InvalidOperationException("The capture region is outside the current desktop.");
+                return CaptureService.CaptureScreenRect(selected);
+            });
+            var annotations = await Task.Run(() => HistoryService.LoadAnnotations(record));
+            if (!OpenPins.Contains(this) || !ReferenceEquals(source, _source) || _inlineMode != "None") return;
             BitmapSource refreshed = freshBase;
             if (annotations.Count > 0)
             {
@@ -895,8 +967,7 @@ public partial class PinnedImageWindow : Window
                 refreshed = InlineEditor.Flatten();
             }
             SetBaseImage(refreshed);
-            HistoryService.SaveAnnotationDocument(record.Id, freshBase, refreshed, annotations);
-            HistoryService.UpdateSourceKind(record.Id, "Refreshed");
+            await HistoryService.SaveAnnotationDocumentAsync(record.Id, freshBase, refreshed, annotations, "Refreshed");
             if (!silent) System.Media.SystemSounds.Asterisk.Play();
         }
         catch (Exception ex)
@@ -905,6 +976,7 @@ public partial class PinnedImageWindow : Window
             if (!silent)
                 MessageBox.Show(ex.Message, L("Refresh screenshot"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
+        finally { _historyWriteGate.Release(); _refreshRunning = false; }
     }
 
     private void SetSelected(bool selected)
@@ -1033,7 +1105,7 @@ public partial class PinnedImageWindow : Window
     private void SaveImage(object sender, RoutedEventArgs e)
         => SaveBitmap(_source, applyOutputEffects: true);
 
-    private void SaveBitmap(BitmapSource source, bool applyOutputEffects)
+    private async void SaveBitmap(BitmapSource source, bool applyOutputEffects)
     {
         var folder = Directory.Exists(_settings.QuickSaveFolder) ? _settings.QuickSaveFolder : Path.GetTempPath();
         var suggested = SettingsService.CreateOutputPath(folder, _settings.OutputFileName);
@@ -1046,8 +1118,11 @@ public partial class PinnedImageWindow : Window
             InitialDirectory = Path.GetDirectoryName(suggested) ?? folder,
             FileName = Path.GetFileName(suggested)
         };
-        if (dialog.ShowDialog(this) == true)
-            CaptureService.SaveImage(source, dialog.FileName, _settings.ImageQuality, applyOutputEffects ? _settings : null);
+        if (dialog.ShowDialog(this) != true) return;
+        if (!source.IsFrozen) { source = source.Clone(); source.Freeze(); }
+        var settings = SettingsService.Load();
+        try { await PersistenceQueue.Run(() => CaptureService.SaveImage(source, dialog.FileName, settings.ImageQuality, applyOutputEffects ? settings : null)); }
+        catch (Exception ex) { ReportPersistenceError(ex); }
     }
 
     private void PrintImage()

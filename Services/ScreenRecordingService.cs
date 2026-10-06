@@ -10,13 +10,17 @@ internal sealed record ScreenRecordingResult(string FilePath, BitmapSource Previ
 
 internal static class ScreenRecordingService
 {
-    public static async Task<ScreenRecordingResult> CaptureGifAsync(
+    public static Task<ScreenRecordingResult> CaptureGifAsync(
         Rect screenBounds,
         AppSettings settings,
         Func<bool> isPaused,
         Func<bool> shouldStop,
         Action<TimeSpan, int>? progress,
         CancellationToken cancellationToken)
+        => Task.Run(() => CaptureGifCoreAsync(screenBounds, settings, isPaused, shouldStop, progress, cancellationToken), cancellationToken);
+
+    private static async Task<ScreenRecordingResult> CaptureGifCoreAsync(Rect screenBounds, AppSettings settings,
+        Func<bool> isPaused, Func<bool> shouldStop, Action<TimeSpan, int>? progress, CancellationToken cancellationToken)
     {
         var fps = Math.Clamp(settings.RecordingFrameRate, 2, 20);
         var interval = TimeSpan.FromMilliseconds(1000d / fps);
@@ -29,6 +33,8 @@ internal static class ScreenRecordingService
         BitmapSource? preview = null;
         StreamingGifWriter? writer = null;
         var frameCount = 0;
+        BitmapSource? pendingFrame = null;
+        var pendingStarted = TimeSpan.Zero;
 
         try
         {
@@ -51,11 +57,16 @@ internal static class ScreenRecordingService
                 }
 
                 var frameStarted = total.Elapsed;
-                var captured = await Task.Run(() => CaptureService.CaptureScreenRect(screenBounds, settings.RecordingIncludeCursor), cancellationToken);
+                var capturedAt = active.Elapsed;
+                var captured = CaptureService.CaptureScreenRect(screenBounds, settings.RecordingIncludeCursor);
                 var frame = ScaleToMaximumWidth(captured, Math.Clamp(settings.RecordingMaxWidth, 320, 1920));
                 preview ??= frame;
                 writer ??= new StreamingGifWriter(output, frame.PixelWidth, frame.PixelHeight, interval);
-                writer.AppendFrame(frame);
+                // Hold only one frame so its duration reflects the actual next capture time,
+                // including slow encoding/capture but excluding paused time.
+                if (pendingFrame is not null) writer.AppendFrame(pendingFrame, capturedAt - pendingStarted);
+                pendingFrame = frame;
+                pendingStarted = capturedAt;
                 frameCount++;
                 progress?.Invoke(active.Elapsed, frameCount);
                 var remaining = interval - (total.Elapsed - frameStarted);
@@ -72,6 +83,7 @@ internal static class ScreenRecordingService
             }
 
             active.Stop();
+            if (pendingFrame is not null) writer!.AppendFrame(pendingFrame, active.Elapsed - pendingStarted);
             writer!.Complete();
             return new ScreenRecordingResult(output, preview!, active.Elapsed, frameCount);
         }

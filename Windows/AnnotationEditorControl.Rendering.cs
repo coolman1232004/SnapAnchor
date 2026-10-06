@@ -16,18 +16,39 @@ namespace SnapAnchor.Controls;
 
 public partial class AnnotationEditorControl
 {
+    private readonly Dictionary<Guid, AnnotationItem> _renderedItems = new();
+    private BitmapSource? _renderedSource;
+
     private void RenderAnnotations()
     {
         _renderPending = false;
         if (_textEditor is not null) return;
-        AnnotationCanvas.Children.Clear();
-        _renderedElements.Clear();
-        foreach (var item in _items)
+        if (!ReferenceEquals(_renderedSource, _source)) { _renderedItems.Clear(); _renderedSource = _source; }
+        var existing = _renderedElements.Values.ToHashSet();
+        foreach (var child in AnnotationCanvas.Children.OfType<FrameworkElement>().Where(child => !existing.Contains(child)).ToList())
+            AnnotationCanvas.Children.Remove(child);
+        var ids = _items.Select(item => item.Id).ToHashSet();
+        foreach (var removedId in _renderedElements.Keys.Where(id => !ids.Contains(id)).ToList())
         {
+            AnnotationCanvas.Children.Remove(_renderedElements[removedId]);
+            _renderedElements.Remove(removedId);
+            _renderedItems.Remove(removedId);
+        }
+        for (var index = 0; index < _items.Count; index++)
+        {
+            var item = _items[index];
+            if (_renderedItems.TryGetValue(item.Id, out var previous) && item.VisuallyEquals(previous) && _renderedElements.TryGetValue(item.Id, out var unchanged))
+            {
+                Panel.SetZIndex(unchanged, index);
+                continue;
+            }
+            if (_renderedElements.Remove(item.Id, out var old)) AnnotationCanvas.Children.Remove(old);
             var element = CreateElement(item);
             if (element is null) continue;
+            Panel.SetZIndex(element, index);
             AnnotationCanvas.Children.Add(element);
             _renderedElements[item.Id] = element;
+            _renderedItems[item.Id] = item.Clone();
         }
 
         if (!_dragging && _selectedId is Guid id && _items.FirstOrDefault(item => item.Id == id) is { } selected)
@@ -35,6 +56,9 @@ public partial class AnnotationEditorControl
             var bounds = Bounds(selected);
             AddSelectionHandles(selected, bounds);
         }
+        var rendered = _renderedElements.Values.ToHashSet();
+        foreach (var child in AnnotationCanvas.Children.OfType<FrameworkElement>().Where(child => !rendered.Contains(child)))
+            Panel.SetZIndex(child, _items.Count);
     }
 
     private void RequestRender()

@@ -5,6 +5,7 @@ internal sealed class CaptureRecord
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public string FileName { get; set; } = string.Empty;
+    public string OriginalFileName { get; set; } = string.Empty;
     public int Width { get; set; }
     public int Height { get; set; }
     public string RecognizedText { get; set; } = string.Empty;

@@ -16,6 +16,57 @@ internal static class HistoryService
 
     public static string HistoryDirectory => Root;
 
+    private static BitmapSource Frozen(BitmapSource image)
+    {
+        if (image.IsFrozen) return image;
+        var copy = image.Clone();
+        copy.Freeze();
+        return copy;
+    }
+
+    public static Task<CaptureRecord> AddAsync(BitmapSource image, Int32Rect? sourceRegion = null, BitmapSource? contextImage = null, string sourceKind = "Capture")
+    {
+        var frozen = Frozen(image);
+        var context = contextImage is null ? null : Frozen(contextImage);
+        return PersistenceQueue.Run(() => Add(frozen, sourceRegion, context, sourceKind));
+    }
+
+    public static Task<CaptureRecord> AddRecordingAsync(BitmapSource preview, string mediaPath, TimeSpan duration, int frameCount)
+    {
+        var frozen = Frozen(preview);
+        return PersistenceQueue.Run(() => AddRecording(frozen, mediaPath, duration, frameCount));
+    }
+
+    public static Task SaveAnnotationDocumentAsync(string id, BitmapSource baseImage, BitmapSource flattenedImage, IReadOnlyList<AnnotationItem> items, string? sourceKind = null)
+    {
+        var source = Frozen(baseImage);
+        var flattened = Frozen(flattenedImage);
+        var snapshot = items.Select(item => item.Clone()).ToList();
+        return PersistenceQueue.Run(() => SaveAnnotationDocument(id, source, flattened, snapshot, sourceKind));
+    }
+
+    public static Task<string> StoreDocumentAsync(string? id, BitmapSource baseImage, BitmapSource flattenedImage,
+        IReadOnlyList<AnnotationItem> items, string sourceKind, Int32Rect? region = null, BitmapSource? contextImage = null)
+    {
+        var source = Frozen(baseImage);
+        var flattened = Frozen(flattenedImage);
+        var context = contextImage is null ? null : Frozen(contextImage);
+        var snapshot = items.Select(item => item.Clone()).ToList();
+        return PersistenceQueue.Run(() =>
+        {
+            var recordId = id;
+            if (string.IsNullOrWhiteSpace(recordId)) recordId = Add(source, region, context, sourceKind).Id;
+            SaveAnnotationDocument(recordId, source, flattened, snapshot, sourceKind);
+            return recordId;
+        });
+    }
+
+    public static Task<CaptureRecord> SaveRecognitionAsync(BitmapSource image, string text, string barcode, string format)
+    {
+        var frozen = Frozen(image);
+        return PersistenceQueue.Run(() => SaveRecognition(frozen, text, barcode, format));
+    }
+
     public static CaptureRecord Add(
         BitmapSource image,
         Int32Rect? sourceRegion = null,
@@ -129,22 +180,22 @@ internal static class HistoryService
     private static CaptureRegion CloneRegion(CaptureRegion region) =>
         new() { X = region.X, Y = region.Y, Width = region.Width, Height = region.Height };
 
-    public static BitmapSource LoadImage(CaptureRecord record, int decodeWidth = 0)
-        => LoadImagePath(PathFor(record), decodeWidth);
+    public static BitmapSource LoadImage(CaptureRecord record, int decodeWidth = 0, int decodeHeight = 0)
+        => LoadImagePath(PathFor(record), decodeWidth, decodeHeight);
 
     public static BitmapSource LoadBaseImage(CaptureRecord record)
         => LoadImagePath(string.IsNullOrWhiteSpace(record.BaseFileName) ? PathFor(record) : Path.Combine(Root, record.BaseFileName), 0);
 
-    public static BitmapSource? LoadContextImage(CaptureRecord record, int decodeWidth = 0)
+    public static BitmapSource? LoadContextImage(CaptureRecord record, int decodeWidth = 0, int decodeHeight = 0)
     {
         if (string.IsNullOrWhiteSpace(record.ContextFileName)) return null;
         var path = Path.Combine(Root, record.ContextFileName);
-        return File.Exists(path) ? LoadImagePath(path, decodeWidth) : null;
+        return File.Exists(path) ? LoadImagePath(path, decodeWidth, decodeHeight) : null;
     }
 
-    public static BitmapSource? LoadContextPreview(CaptureRecord record, int decodeWidth = 240)
+    public static BitmapSource? LoadContextPreview(CaptureRecord record, int decodeWidth = 240, int decodeHeight = 0)
     {
-        var context = LoadContextImage(record, decodeWidth);
+        var context = LoadContextImage(record, decodeWidth, decodeHeight);
         if (context is null || record.SourceRegion is not { Width: > 0, Height: > 0 } region) return context;
         var sourceWidth = record.ContextWidth > 0 ? record.ContextWidth : context.PixelWidth;
         var sourceHeight = record.ContextHeight > 0 ? record.ContextHeight : context.PixelHeight;
@@ -180,19 +231,24 @@ internal static class HistoryService
         }
     }
 
-    private static BitmapSource LoadImagePath(string path, int decodeWidth)
+    private static BitmapSource LoadImagePath(string path, int decodeWidth, int decodeHeight = 0)
     {
+        using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
         var image = new BitmapImage();
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
         if (decodeWidth > 0) image.DecodePixelWidth = decodeWidth;
-        image.UriSource = new Uri(path);
+        if (decodeHeight > 0) image.DecodePixelHeight = decodeHeight;
+        image.StreamSource = stream;
         image.EndInit();
         image.Freeze();
         return image;
     }
 
-    public static CaptureRecord? Find(string id) => List(includeDeleted: true).FirstOrDefault(record => record.Id == id);
+    public static CaptureRecord? Find(string id)
+    {
+        lock (Sync) return LoadState().Records.FirstOrDefault(record => record.Id == id);
+    }
 
     public static void UpdateMetadata(string id, string? title = null, bool? favorite = null, IEnumerable<string>? tags = null)
     {
@@ -300,7 +356,7 @@ internal static class HistoryService
         }
     }
 
-    public static void SaveAnnotationDocument(string id, BitmapSource baseImage, BitmapSource flattenedImage, IReadOnlyList<AnnotationItem> items)
+    public static void SaveAnnotationDocument(string id, BitmapSource baseImage, BitmapSource flattenedImage, IReadOnlyList<AnnotationItem> items, string? sourceKind = null)
     {
         lock (Sync)
         {
@@ -308,19 +364,41 @@ internal static class HistoryService
             var state = LoadState();
             var record = state.Records.FirstOrDefault(candidate => candidate.Id == id);
             if (record is null) return;
-            record.BaseFileName = string.IsNullOrWhiteSpace(record.BaseFileName)
-                ? $"{Path.GetFileNameWithoutExtension(record.FileName)}_base.png"
-                : record.BaseFileName;
-            record.AnnotationFileName = string.IsNullOrWhiteSpace(record.AnnotationFileName)
-                ? $"{Path.GetFileNameWithoutExtension(record.FileName)}.annotations.json"
-                : record.AnnotationFileName;
+            // Immutable files make the index the transaction's single commit point.
+            // The old index and its .bak continue to refer to complete documents.
+            var revision = $"{record.Id}_rev_{Guid.NewGuid():N}";
+            if (string.IsNullOrWhiteSpace(record.OriginalFileName)) record.OriginalFileName = record.FileName;
+            record.BaseFileName = revision + "_base.png";
+            record.AnnotationFileName = revision + ".annotations.json";
+            record.FileName = revision + ".png";
             record.Width = flattenedImage.PixelWidth;
             record.Height = flattenedImage.PixelHeight;
             CaptureService.SavePng(baseImage, Path.Combine(Root, record.BaseFileName));
             CaptureService.SavePng(flattenedImage, PathFor(record));
             var document = new AnnotationDocument { Items = items.Select(item => item.Clone()).ToList() };
             AtomicFileService.WriteJson(Path.Combine(Root, record.AnnotationFileName), document);
+            if (sourceKind is not null) record.SourceKind = sourceKind;
             SaveState(state);
+            CleanupRevisions(state, record.Id);
+        }
+    }
+
+    private static void CleanupRevisions(CaptureHistoryState state, string id)
+    {
+        var protectedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Keep(CaptureHistoryState index)
+        {
+            foreach (var record in index.Records)
+                foreach (var name in new[] { record.FileName, record.BaseFileName, record.AnnotationFileName })
+                    protectedFiles.Add(name);
+        }
+        Keep(state);
+        if (AtomicFileService.TryReadJson<CaptureHistoryState>(AtomicFileService.BackupPath(IndexPath), out var backup)) Keep(backup!);
+        foreach (var file in RevisionFiles(id))
+        {
+            var name = Path.GetFileName(file);
+            if (protectedFiles.Contains(name) || (name.EndsWith(".bak", StringComparison.Ordinal) && protectedFiles.Contains(name[..^4]))) continue;
+            try { File.Delete(file); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
     }
 
@@ -439,9 +517,15 @@ internal static class HistoryService
 
     private static void DeleteFiles(CaptureRecord record)
     {
+        foreach (var file in RevisionFiles(record.Id)) File.Delete(file);
+        var originalStem = string.IsNullOrWhiteSpace(record.OriginalFileName) ? string.Empty : Path.GetFileNameWithoutExtension(record.OriginalFileName);
         foreach (var path in new[]
         {
             PathFor(record),
+            string.IsNullOrWhiteSpace(record.OriginalFileName) ? string.Empty : Path.Combine(Root, record.OriginalFileName),
+            originalStem.Length == 0 ? string.Empty : Path.Combine(Root, originalStem + "_base.png"),
+            originalStem.Length == 0 ? string.Empty : Path.Combine(Root, originalStem + ".annotations.json"),
+            originalStem.Length == 0 ? string.Empty : Path.Combine(Root, originalStem + ".annotations.json.bak"),
             string.IsNullOrWhiteSpace(record.BaseFileName) ? string.Empty : Path.Combine(Root, record.BaseFileName),
             string.IsNullOrWhiteSpace(record.AnnotationFileName) ? string.Empty : Path.Combine(Root, record.AnnotationFileName)
             ,string.IsNullOrWhiteSpace(record.AnnotationFileName) ? string.Empty : AtomicFileService.BackupPath(Path.Combine(Root, record.AnnotationFileName))
@@ -452,4 +536,7 @@ internal static class HistoryService
     }
 
     private static string PathFor(CaptureRecord record) => Path.Combine(Root, record.FileName);
+
+    private static IEnumerable<string> RevisionFiles(string id) => Guid.TryParseExact(id, "N", out _)
+        ? Directory.EnumerateFiles(Root, $"{id}_rev_*") : [];
 }
