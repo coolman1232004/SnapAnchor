@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.31] - 2026-10-06
+
 - Merge settings changes by field so old editor/pin windows preserve newer preferences; cache capture settings and debounce annotation style saves.
 - Recover pin sessions from a previous generation when a PNG is corrupt; coalesce saves and reuse unchanged PNG encodings.
 - Store annotation revisions before committing the history index, retaining a complete recovery version and cleaning obsolete revisions.
