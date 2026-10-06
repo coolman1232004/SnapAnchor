@@ -50,7 +50,7 @@ public partial class CaptureOverlayWindow
             }
             await Task.Delay(140);
             progressWindow = new LongCaptureProgressWindow();
-            progressWindow.StopRequested += (_, _) => stopRequested = true;
+            progressWindow.StopRequested += (_, _) => Volatile.Write(ref stopRequested, true);
             progressWindow.Show();
             var progress = new Progress<ScrollingCaptureProgress>(item => progressWindow?.Report(item));
             var result = await ScrollingCaptureService.CaptureAsync(
@@ -59,7 +59,7 @@ public partial class CaptureOverlayWindow
                 scrollTarget,
                 scrollPoint,
                 progress: progress,
-                stopRequested: () => stopRequested);
+                stopRequested: () => Volatile.Read(ref stopRequested));
             progressWindow.Close();
             progressWindow = null;
             NativeMethods.SetCursorPos(originalCursor.X, originalCursor.Y);
@@ -67,8 +67,8 @@ public partial class CaptureOverlayWindow
                 throw new InvalidOperationException(L("The selected content did not scroll. Place the pointer over a scrollable page and try again."));
             Close();
             Clipboard.SetImage(result.Image);
-            HistoryService.Add(result.Image, sourceKind: "Scrolling");
-            var pin = new PinnedImageWindow(result.Image);
+            var record = await HistoryService.AddAsync(result.Image, sourceKind: "Scrolling");
+            var pin = new PinnedImageWindow(result.Image, historyRecordId: record.Id);
             pin.Show();
             System.Media.SystemSounds.Asterisk.Play();
         }
@@ -94,7 +94,7 @@ public partial class CaptureOverlayWindow
     {
         if (!EnsureSelection()) return;
         _ocrCancellation?.Cancel();
-        _ocrCancellation = new CancellationTokenSource();
+        var cancellation = _ocrCancellation = new CancellationTokenSource();
         OcrPanel.Visibility = Visibility.Visible;
         CaptureOcrResultBox.Text = L("Recognizing locally…");
         CopyOcrButton.IsEnabled = false;
@@ -110,7 +110,8 @@ public partial class CaptureOverlayWindow
             var pixelRegion = PixelRegion(ocrArea);
             var image = CaptureService.Crop(_screen, pixelRegion);
             var language = CaptureOcrLanguageBox.SelectedValue as string ?? "eng";
-            var result = await RecognitionService.RecognizeAsync(image, language, _ocrCancellation.Token);
+            var result = await RecognitionService.RecognizeAsync(image, language, cancellation.Token);
+            if (cancellation.IsCancellationRequested || !ReferenceEquals(_ocrCancellation, cancellation)) return;
             var sections = new List<string>();
             if (!string.IsNullOrWhiteSpace(result.Text)) sections.Add(result.Text.Trim());
             if (!string.IsNullOrWhiteSpace(result.BarcodeText))
@@ -120,24 +121,30 @@ public partial class CaptureOverlayWindow
 
             if (sections.Count > 0)
             {
-                if (string.IsNullOrWhiteSpace(_ocrHistoryRecordId))
-                    _ocrHistoryRecordId = HistoryService.Add(image, pixelRegion, _screen, "OCR").Id;
-                HistoryService.UpdateRecognition(_ocrHistoryRecordId, result.Text, result.BarcodeText, result.BarcodeFormat);
+                var recordId = _ocrHistoryRecordId;
+                if (string.IsNullOrWhiteSpace(recordId))
+                    recordId = (await HistoryService.AddAsync(image, pixelRegion, _screen, "OCR")).Id;
+                if (cancellation.IsCancellationRequested || !ReferenceEquals(_ocrCancellation, cancellation)) return;
+                _ocrHistoryRecordId = recordId;
+                var id = recordId;
+                await PersistenceQueue.Run(() => HistoryService.UpdateRecognition(id, result.Text, result.BarcodeText, result.BarcodeFormat));
+                if (cancellation.IsCancellationRequested || !ReferenceEquals(_ocrCancellation, cancellation)) return;
                 if (copyWhenDone || OcrAutoCopyBox.IsChecked == true) Clipboard.SetText(CaptureOcrResultBox.Text);
             }
         }
         catch (OperationCanceledException)
         {
-            CaptureOcrResultBox.Text = L("Recognition cancelled.");
+            if (ReferenceEquals(_ocrCancellation, cancellation)) CaptureOcrResultBox.Text = L("Recognition cancelled.");
         }
         catch (Exception ex)
         {
             while (ex.InnerException is not null) ex = ex.InnerException;
-            CaptureOcrResultBox.Text = LocalizationService.Format("Recognition failed: {0}", ex.Message);
+            if (ReferenceEquals(_ocrCancellation, cancellation)) CaptureOcrResultBox.Text = LocalizationService.Format("Recognition failed: {0}", ex.Message);
         }
         finally
         {
-            RetryOcrButton.IsEnabled = true;
+            if (ReferenceEquals(_ocrCancellation, cancellation)) { RetryOcrButton.IsEnabled = true; _ocrCancellation = null; }
+            cancellation.Dispose();
         }
     }
 

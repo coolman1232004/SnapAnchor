@@ -11,7 +11,7 @@ internal static class ScrollingCaptureService
 {
     private const int EscapeKey = 0x1B;
 
-    public static async Task<ScrollingCaptureResult> CaptureAsync(
+    public static Task<ScrollingCaptureResult> CaptureAsync(
         Rect screenRegion,
         AppSettings settings,
         IntPtr scrollTarget = default,
@@ -19,8 +19,17 @@ internal static class ScrollingCaptureService
         CancellationToken cancellationToken = default,
         IProgress<ScrollingCaptureProgress>? progress = null,
         Func<bool>? stopRequested = null)
+        => Task.Run(() => CaptureCoreAsync(screenRegion, settings, scrollTarget, scrollPoint, cancellationToken, progress, stopRequested), cancellationToken);
+
+    private static async Task<ScrollingCaptureResult> CaptureCoreAsync(Rect screenRegion, AppSettings settings,
+        IntPtr scrollTarget, NativeMethods.NativePoint scrollPoint, CancellationToken cancellationToken,
+        IProgress<ScrollingCaptureProgress>? progress, Func<bool>? stopRequested)
     {
-        var frames = new List<BitmapSource> { CaptureService.CaptureScreenRect(screenRegion) };
+        var previousPixels = PixelFrame.From(CaptureService.CaptureScreenRect(screenRegion));
+        var segments = new List<PixelFrame> { previousPixels };
+        var frameCount = 1;
+        var outputHeight = previousPixels.Height;
+        var maximumHeight = MaximumHeight(previousPixels.Width);
         var cancelled = false;
         var rejectedFrames = 0;
         var consecutiveDuplicates = 0;
@@ -32,7 +41,7 @@ internal static class ScrollingCaptureService
         var activeWheelDelta = wheelDelta;
 
         progress?.Report(new ScrollingCaptureProgress(1, 0, LocalizationService.Current("Captured first frame")));
-        for (var attempt = 1; frames.Count < maxFrames && attempt < maxFrames * 2; attempt++)
+        for (var attempt = 1; frameCount < maxFrames && attempt < maxFrames * 2; attempt++)
         {
             if (cancellationToken.IsCancellationRequested || stopRequested?.Invoke() == true ||
                 (NativeMethods.GetAsyncKeyState(EscapeKey) & 0x8000) != 0)
@@ -42,15 +51,14 @@ internal static class ScrollingCaptureService
                 break;
             }
             Scroll(scrollTarget, scrollPoint, activeWheelDelta, consecutiveDuplicates > 0);
-            await Task.Delay(delay, CancellationToken.None);
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             var current = CaptureService.CaptureScreenRect(screenRegion);
-            var previousPixels = PixelFrame.From(frames[^1]);
             var currentPixels = PixelFrame.From(current);
             if (AverageDifference(previousPixels, currentPixels) < 2.4)
             {
                 rejectedFrames++;
                 consecutiveDuplicates++;
-                progress?.Report(new ScrollingCaptureProgress(frames.Count, rejectedFrames, LocalizationService.Current("Duplicate frame ignored")));
+                progress?.Report(new ScrollingCaptureProgress(frameCount, rejectedFrames, LocalizationService.Current("Duplicate frame ignored")));
                 if (consecutiveDuplicates >= 2)
                 {
                     stopReason = "Reached the end of the scrollable content";
@@ -59,16 +67,16 @@ internal static class ScrollingCaptureService
                 continue;
             }
             consecutiveDuplicates = 0;
-            var alignment = FindVerticalAlignment(previousPixels, currentPixels);
+            var alignment = FindVerticalAlignment(previousPixels, currentPixels, cancellationToken);
             // Animated pages sometimes have not settled at the configured
             // delay. One stationary recapture is cheaper and more reliable
             // than accepting a bad seam.
             if (alignment is null)
             {
-                await Task.Delay(Math.Max(80, delay / 2), CancellationToken.None);
+                await Task.Delay(Math.Max(80, delay / 2), cancellationToken).ConfigureAwait(false);
                 current = CaptureService.CaptureScreenRect(screenRegion);
                 currentPixels = PixelFrame.From(current);
-                alignment = FindVerticalAlignment(previousPixels, currentPixels);
+                alignment = FindVerticalAlignment(previousPixels, currentPixels, cancellationToken);
             }
             if (alignment is null)
             {
@@ -78,9 +86,9 @@ internal static class ScrollingCaptureService
                 // step. This prevents one transient mismatch from skipping a
                 // section of the page.
                 Scroll(scrollTarget, scrollPoint, -activeWheelDelta, true);
-                await Task.Delay(Math.Max(80, delay / 2), CancellationToken.None);
+                await Task.Delay(Math.Max(80, delay / 2), cancellationToken).ConfigureAwait(false);
                 activeWheelDelta = Math.Sign(wheelDelta) * Math.Max(120, Math.Abs(activeWheelDelta) / 2);
-                progress?.Report(new ScrollingCaptureProgress(frames.Count, rejectedFrames, LocalizationService.Current("Unmatched frame rolled back; retrying")));
+                progress?.Report(new ScrollingCaptureProgress(frameCount, rejectedFrames, LocalizationService.Current("Unmatched frame rolled back; retrying")));
                 if (consecutiveAlignmentFailures >= 2)
                 {
                     stopReason = "Could not find a reliable overlap";
@@ -89,35 +97,54 @@ internal static class ScrollingCaptureService
                 continue;
             }
             consecutiveAlignmentFailures = 0;
-            frames.Add(current);
+            cancellationToken.ThrowIfCancellationRequested();
+            var addedRows = Math.Min(alignment.Shift, maximumHeight - outputHeight);
+            if (addedRows <= 0) break;
+            segments.Add(currentPixels.Strip(currentPixels.Height - alignment.Shift, addedRows));
+            outputHeight += addedRows;
+            previousPixels = currentPixels;
+            frameCount++;
             if (Math.Abs(activeWheelDelta) < Math.Abs(wheelDelta))
                 activeWheelDelta = Math.Sign(wheelDelta) * Math.Min(Math.Abs(wheelDelta), Math.Abs(activeWheelDelta) + 120);
-            progress?.Report(new ScrollingCaptureProgress(frames.Count, rejectedFrames, LocalizationService.Format("Captured {0} frames", frames.Count)));
-            if (frames[0].PixelHeight + EstimateAddedHeight(frames) >= 50000)
+            progress?.Report(new ScrollingCaptureProgress(frameCount, rejectedFrames, LocalizationService.Format("Captured {0} frames", frameCount)));
+            if (outputHeight >= maximumHeight)
             {
-                stopReason = "Reached the 50,000 pixel height limit";
+                stopReason = "Reached the image size limit";
                 break;
             }
         }
 
-        return new ScrollingCaptureResult(StitchFrames(frames), frames.Count, cancelled, rejectedFrames, stopReason);
+        return new ScrollingCaptureResult(BuildImage(segments), frameCount, cancelled, rejectedFrames, stopReason);
     }
 
     internal static BitmapSource StitchFrames(IReadOnlyList<BitmapSource> frames)
     {
         if (frames.Count == 0) throw new ArgumentException("At least one frame is required.", nameof(frames));
         if (frames.Count == 1) return frames[0];
-        var pixels = frames.Select(PixelFrame.From).ToList();
-        var segments = new List<(PixelFrame Frame, int StartRow, int Height)> { (pixels[0], 0, pixels[0].Height) };
-        for (var index = 1; index < pixels.Count; index++)
+        var previous = PixelFrame.From(frames[0]);
+        var segments = new List<PixelFrame> { previous };
+        var totalHeight = previous.Height;
+        var maximumHeight = MaximumHeight(previous.Width);
+        for (var index = 1; index < frames.Count && totalHeight < maximumHeight; index++)
         {
-            var alignment = FindVerticalAlignment(pixels[index - 1], pixels[index]);
+            var current = PixelFrame.From(frames[index]);
+            var alignment = FindVerticalAlignment(previous, current);
             if (alignment is null) break;
-            segments.Add((pixels[index], pixels[index].Height - alignment.Shift, alignment.Shift));
+            var rows = Math.Min(alignment.Shift, maximumHeight - totalHeight);
+            segments.Add(current.Strip(current.Height - alignment.Shift, rows));
+            totalHeight += rows;
+            previous = current;
         }
+        return BuildImage(segments);
+    }
 
-        var width = segments.Min(segment => segment.Frame.Width);
-        var outputHeight = Math.Min(50000, segments.Sum(segment => segment.Height));
+    // 64 MiB of output pixels leaves room for strips, WPF's bitmap and two capture buffers.
+    private static int MaximumHeight(int width) => Math.Min(50000, Math.Max(1, 64 * 1024 * 1024 / checked(width * 4)));
+
+    private static BitmapSource BuildImage(IReadOnlyList<PixelFrame> segments)
+    {
+        var width = segments.Min(segment => segment.Width);
+        var outputHeight = Math.Min(MaximumHeight(width), segments.Sum(segment => segment.Height));
         var stride = width * 4;
         var output = new byte[stride * outputHeight];
         var destinationRow = 0;
@@ -126,7 +153,7 @@ internal static class ScrollingCaptureService
             var rows = Math.Min(segment.Height, outputHeight - destinationRow);
             if (rows <= 0) break;
             for (var row = 0; row < rows; row++)
-                Buffer.BlockCopy(segment.Frame.Bytes, (segment.StartRow + row) * segment.Frame.Stride, output, (destinationRow + row) * stride, stride);
+                Buffer.BlockCopy(segment.Bytes, row * segment.Stride, output, (destinationRow + row) * stride, stride);
             destinationRow += rows;
         }
 
@@ -140,7 +167,7 @@ internal static class ScrollingCaptureService
 
     private sealed record VerticalAlignment(int Shift, double Score, double Confidence);
 
-    private static VerticalAlignment? FindVerticalAlignment(PixelFrame previous, PixelFrame current)
+    private static VerticalAlignment? FindVerticalAlignment(PixelFrame previous, PixelFrame current, CancellationToken cancellationToken = default)
     {
         var width = Math.Min(previous.Width, current.Width);
         var height = Math.Min(previous.Height, current.Height);
@@ -154,6 +181,7 @@ internal static class ScrollingCaptureService
 
         for (var shift = minimumShift; shift <= maximumShift; shift += coarseStep)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var score = AlignmentScore(previous, current, width, height, shift);
             if (!double.IsFinite(score)) continue;
             if (score < bestScore)
@@ -256,14 +284,6 @@ internal static class ScrollingCaptureService
         return samples == 0 ? double.MaxValue : difference / (double)samples;
     }
 
-    private static int EstimateAddedHeight(IReadOnlyList<BitmapSource> frames)
-    {
-        var total = 0;
-        for (var index = 1; index < frames.Count; index++)
-            total += FindVerticalAlignment(PixelFrame.From(frames[index - 1]), PixelFrame.From(frames[index]))?.Shift ?? 0;
-        return total;
-    }
-
     private static void Scroll(IntPtr target, NativeMethods.NativePoint point, int wheelDelta, bool useSystemInput)
     {
         if (target != IntPtr.Zero && !useSystemInput)
@@ -286,6 +306,12 @@ internal static class ScrollingCaptureService
 
     private sealed record PixelFrame(int Width, int Height, int Stride, byte[] Bytes)
     {
+        internal PixelFrame Strip(int start, int rows)
+        {
+            var strip = new byte[checked(Stride * rows)];
+            Buffer.BlockCopy(Bytes, start * Stride, strip, 0, strip.Length);
+            return new PixelFrame(Width, rows, Stride, strip);
+        }
         internal static PixelFrame From(BitmapSource source)
         {
             var converted = source.Format == PixelFormats.Bgra32 ? source : new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);

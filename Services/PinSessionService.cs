@@ -1,6 +1,7 @@
 using SnapAnchor.Models;
 using System.IO;
 using System.Text.Json;
+using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 
 namespace SnapAnchor.Services;
@@ -9,13 +10,15 @@ internal sealed record PinSessionSnapshot(BitmapSource Image, PinSessionItem Ite
 
 internal static class PinSessionService
 {
-    private static readonly string Root = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnapAnchor", "PinSession");
+    private static readonly string Root = Environment.GetEnvironmentVariable("SNAPANCHOR_SESSION_ROOT") is { Length: > 0 } testRoot
+        ? Path.GetFullPath(testRoot)
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnapAnchor", "PinSession");
     private static readonly object QueueSync = new();
     private static PendingWrite? _pending;
     private static Task _worker = Task.CompletedTask;
     private static bool _workerRunning;
     private static string _lastFingerprint = string.Empty;
+    private static readonly ConditionalWeakTable<BitmapSource, CachedImage> ImageFiles = new();
 
     public static string? LastError { get; private set; }
 
@@ -28,7 +31,7 @@ internal static class PinSessionService
     {
         lock (QueueSync)
         {
-            if (write.Fingerprint == _lastFingerprint && _pending is null) return _worker;
+            if (!_workerRunning && write.Fingerprint == _lastFingerprint && _pending is null) return _worker;
             _pending = write;
             if (!_workerRunning)
             {
@@ -39,10 +42,12 @@ internal static class PinSessionService
         }
     }
 
-    private static void DrainQueue()
+    private static async Task DrainQueue()
     {
         while (true)
         {
+            // Collapse bursts of position/opacity changes; awaiting the worker also flushes shutdown saves.
+            await Task.Delay(150).ConfigureAwait(false);
             PendingWrite? write;
             lock (QueueSync)
             {
@@ -57,6 +62,7 @@ internal static class PinSessionService
 
             try
             {
+                lock (QueueSync) { if (write.Fingerprint == _lastFingerprint) continue; }
                 if (write.Clear) ClearCore(Root);
                 else SaveCore(Root, write.Pins);
                 lock (QueueSync) _lastFingerprint = write.Fingerprint;
@@ -77,6 +83,7 @@ internal static class PinSessionService
         var generationName = $"gen_{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Guid.NewGuid():N}";
         var generationPath = Path.Combine(root, generationName);
         Directory.CreateDirectory(generationPath);
+        var committed = false;
 
         try
         {
@@ -85,20 +92,34 @@ internal static class PinSessionService
             {
                 var snapshot = pins[index];
                 snapshot.Item.FileName = $"pin_{index:D4}.png";
-                CaptureService.SavePng(snapshot.Image, Path.Combine(generationPath, snapshot.Item.FileName));
+                var destination = Path.Combine(generationPath, snapshot.Item.FileName);
+                if (ImageFiles.TryGetValue(snapshot.Image, out var cached) && cached.IsUnchanged())
+                    File.Copy(cached.Path, destination);
+                else
+                {
+                    CaptureService.SavePng(snapshot.Image, destination);
+                    // Decode each new image once, rather than every unchanged pin on every save.
+                    _ = LoadBitmap(destination);
+                }
                 items.Add(snapshot.Item);
             }
             AtomicFileService.WriteJson(Path.Combine(generationPath, "session.json"), items);
-            if (LoadGeneration(root, generationName) is not { } verified || verified.Count != items.Count)
+            if (!AtomicFileService.TryReadJson<List<PinSessionItem>>(Path.Combine(generationPath, "session.json"), out var verified) || verified?.Count != items.Count)
                 throw new InvalidDataException("The new pin-session backup could not be verified.");
 
             var pointer = new SessionPointer(generationName, previousPointer?.Current);
             AtomicFileService.WriteJson(pointerPath, pointer);
+            committed = true;
+            for (var index = 0; index < pins.Count; index++)
+            {
+                ImageFiles.Remove(pins[index].Image);
+                ImageFiles.Add(pins[index].Image, new CachedImage(Path.Combine(generationPath, items[index].FileName)));
+            }
             CleanupOldGenerations(root, pointer);
         }
         catch
         {
-            TryDeleteDirectory(generationPath);
+            if (!committed) TryDeleteDirectory(generationPath);
             throw;
         }
     }
@@ -132,18 +153,24 @@ internal static class PinSessionService
 
     private static IReadOnlyList<(BitmapSource Image, PinSessionItem Item)>? LoadGeneration(string root, string generationName)
     {
-        if (!IsSafeGenerationName(generationName)) return null;
-        var generationPath = Path.Combine(root, generationName);
-        var indexPath = Path.Combine(generationPath, "session.json");
-        if (!AtomicFileService.TryReadJson<List<PinSessionItem>>(indexPath, out var items) || items is null) return null;
-        var result = new List<(BitmapSource, PinSessionItem)>(items.Count);
-        foreach (var item in items)
+        try
         {
-            var path = SafePinPath(generationPath, item.FileName);
-            if (path is null || !File.Exists(path)) return null;
-            result.Add((LoadBitmap(path), item));
+            if (!IsSafeGenerationName(generationName)) return null;
+            var generationPath = Path.Combine(root, generationName);
+            var indexPath = Path.Combine(generationPath, "session.json");
+            if (!AtomicFileService.TryReadJson<List<PinSessionItem>>(indexPath, out var items) || items is null) return null;
+            var result = new List<(BitmapSource, PinSessionItem)>(items.Count);
+            foreach (var item in items)
+            {
+                var path = SafePinPath(generationPath, item.FileName);
+                if (path is null || !File.Exists(path)) return null;
+                result.Add((LoadBitmap(path), item));
+            }
+            return result;
         }
-        return result;
+        // A bad PNG invalidates this generation only; LoadCore can still recover the previous one.
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or System.Runtime.InteropServices.COMException or ArgumentException or InvalidOperationException or FormatException)
+        { return null; }
     }
 
     private static IReadOnlyList<(BitmapSource Image, PinSessionItem Item)> LoadLegacy(string root)
@@ -155,17 +182,19 @@ internal static class PinSessionService
         {
             var path = SafePinPath(root, item.FileName);
             if (path is null || !File.Exists(path)) continue;
-            result.Add((LoadBitmap(path), item));
+            try { result.Add((LoadBitmap(path), item)); }
+            catch (Exception ex) when (ex is IOException or NotSupportedException or FormatException or System.Runtime.InteropServices.COMException) { }
         }
         return result;
     }
 
     private static BitmapSource LoadBitmap(string path)
     {
+        using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
         var image = new BitmapImage();
         image.BeginInit();
         image.CacheOption = BitmapCacheOption.OnLoad;
-        image.UriSource = new Uri(path);
+        image.StreamSource = stream;
         image.EndInit();
         image.Freeze();
         return image;
@@ -207,4 +236,11 @@ internal static class PinSessionService
 
     private sealed record PendingWrite(IReadOnlyList<PinSessionSnapshot> Pins, string Fingerprint, bool Clear);
     private sealed record SessionPointer(string Current, string? Previous);
+    private sealed class CachedImage(string path)
+    {
+        public string Path { get; } = path;
+        private readonly long _length = new FileInfo(path).Length;
+        private readonly DateTime _written = File.GetLastWriteTimeUtc(path);
+        public bool IsUnchanged() => File.Exists(Path) && new FileInfo(Path).Length == _length && File.GetLastWriteTimeUtc(Path) == _written;
+    }
 }

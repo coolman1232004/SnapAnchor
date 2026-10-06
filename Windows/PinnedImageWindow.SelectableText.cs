@@ -29,6 +29,8 @@ public partial class PinnedImageWindow
     {
         if (!enabled)
         {
+            _selectableTextCancellation?.Cancel();
+            _selectableTextCancellation = null;
             HideSelectableText();
             SaveSession();
             return;
@@ -46,18 +48,18 @@ public partial class PinnedImageWindow
         }
 
         _selectableTextCancellation?.Cancel();
-        _selectableTextCancellation?.Dispose();
         var cancellation = _selectableTextCancellation = new CancellationTokenSource();
         var source = _source;
         ShowPinStatus("Recognizing text locally…");
         try
         {
             var result = await RecognitionService.RecognizeAsync(source, _settings.OcrLanguage, cancellation.Token);
-            if (cancellation.IsCancellationRequested || !ReferenceEquals(source, _source)) return;
+            if (cancellation.IsCancellationRequested || !ReferenceEquals(_selectableTextCancellation, cancellation) || !ReferenceEquals(source, _source) || !_textSelectable) return;
             _recognizedTextSource = source;
             _selectableTextResult = result;
             _recognizedWords = result.RecognizedWords;
-            PersistRecognitionResult(result);
+            await PersistRecognitionResultAsync(result);
+            if (cancellation.IsCancellationRequested || !ReferenceEquals(_selectableTextCancellation, cancellation) || !_textSelectable) return;
             if (_recognizedWords.Count == 0)
             {
                 HideSelectableText();
@@ -70,10 +72,11 @@ public partial class PinnedImageWindow
         }
         catch (OperationCanceledException)
         {
-            if (_textSelectable) HideSelectableText();
+            if (ReferenceEquals(_selectableTextCancellation, cancellation) && _textSelectable) HideSelectableText();
         }
         catch (Exception ex)
         {
+            if (!ReferenceEquals(_selectableTextCancellation, cancellation)) return;
             HideSelectableText();
             ShowPinStatus($"Text recognition failed: {ex.Message}");
         }
@@ -81,9 +84,9 @@ public partial class PinnedImageWindow
         {
             if (ReferenceEquals(_selectableTextCancellation, cancellation))
             {
-                _selectableTextCancellation.Dispose();
                 _selectableTextCancellation = null;
             }
+            cancellation.Dispose();
         }
     }
 
@@ -113,7 +116,6 @@ public partial class PinnedImageWindow
     private void InvalidateSelectableText()
     {
         _selectableTextCancellation?.Cancel();
-        _selectableTextCancellation?.Dispose();
         _selectableTextCancellation = null;
         _recognizedTextSource = null;
         _selectableTextResult = null;

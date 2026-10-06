@@ -1,6 +1,7 @@
 using SnapAnchor.Models;
 using SnapAnchor.Services;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +14,13 @@ public partial class HistoryWindow : Window
 {
     public event EventHandler? RepeatLastRequested;
     private readonly HashSet<string> _contextPreviewIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HistoryThumbnailCache _thumbnails = new();
+    private readonly System.Windows.Threading.DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private CancellationTokenSource? _reloadCancellation;
+    private const int PageSize = 60;
+    private int _page;
+    private int _pageCount = 1;
+    private readonly Dictionary<string, CaptureRecord> _records = new();
 
     public HistoryWindow()
     {
@@ -21,6 +29,8 @@ public partial class HistoryWindow : Window
         var settings = SettingsService.Load();
         LocalizationService.Apply(this, settings.UiLanguage);
         AccessibilityService.Apply(this);
+        _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); Reload(); };
+        Closed += (_, _) => { _searchTimer.Stop(); _reloadCancellation?.Cancel(); };
         Loaded += (_, _) =>
         {
             Reload();
@@ -32,39 +42,77 @@ public partial class HistoryWindow : Window
         };
     }
 
-    private void Reload()
+    private void Reload() => BeginReload(resetPage: true);
+
+    private async void BeginReload(bool resetPage)
     {
-        var showDeleted = ShowRecycleBox.IsChecked == true;
-        var records = HistoryService.List(includeDeleted: showDeleted)
-            .Where(record => record.IsDeleted == showDeleted)
-            // Favorites first, then newest — keeps power-user pins easy to re-open.
-            .OrderByDescending(record => record.IsFavorite)
-            .ThenByDescending(record => record.CreatedAt)
-            .ToList();
-        _contextPreviewIds.RemoveWhere(id => records.All(record => !record.Id.Equals(id, StringComparison.OrdinalIgnoreCase) || !record.HasContext));
-        var filtered = records.Where(MatchesFilters).ToList();
-        HistoryList.ItemsSource = filtered.Select(record => new HistoryViewItem
+        _searchTimer.Stop();
+        _reloadCancellation?.Cancel();
+        var cancellation = _reloadCancellation = new CancellationTokenSource();
+        if (resetPage) _page = 0;
+        try
         {
-            Id = record.Id,
-            Thumbnail = PreviewImage(record, 240),
-            SizeLabel = record.IsRecording
-                ? $"{record.Width} x {record.Height} - {record.MediaKind} {TimeSpan.FromMilliseconds(record.DurationMilliseconds):mm\\:ss}"
-                : $"{record.Width} x {record.Height}",
-            TimeLabel = record.CreatedAt.ToString("MMM d  HH:mm:ss"),
-            SourceLabel = SourceLabel(record),
-            RecognitionLabel = RecognitionLabel(record),
-            EditLabel = L(record.IsRecording ? "Open" : "Edit"),
-            ContextLabel = L(_contextPreviewIds.Contains(record.Id) ? "Show result" : "Show context"),
-            ContextVisibility = record.HasContext ? Visibility.Visible : Visibility.Collapsed,
-            Title = string.IsNullOrWhiteSpace(record.Title) ? SourceLabel(record) : record.Title,
-            FavoriteGlyph = record.IsFavorite ? "★" : "☆",
-            ActiveVisibility = record.IsDeleted ? Visibility.Collapsed : Visibility.Visible,
-            DeletedVisibility = record.IsDeleted ? Visibility.Visible : Visibility.Collapsed
-        }).ToList();
-        SummaryText.Text = filtered.Count == records.Count
-            ? records.Count == 1 ? L("1 saved item") : LocalizationService.Format("{0} saved items", records.Count)
-            : LocalizationService.Format("{0} of {1} saved items", filtered.Count, records.Count);
+            var showDeleted = ShowRecycleBox.IsChecked == true;
+            var loaded = await Task.Run(() => HistoryService.List(includeDeleted: showDeleted), cancellation.Token);
+            if (cancellation.IsCancellationRequested) return;
+            var records = loaded
+                .Where(record => record.IsDeleted == showDeleted)
+                // Favorites first, then newest — keeps power-user pins easy to re-open.
+                .OrderByDescending(record => record.IsFavorite)
+                .ThenByDescending(record => record.CreatedAt)
+                .ToList();
+            _records.Clear();
+            foreach (var record in records) _records[record.Id] = record;
+            _contextPreviewIds.RemoveWhere(id => !_records.TryGetValue(id, out var record) || !record.HasContext);
+            var filtered = records.Where(MatchesFilters).ToList();
+            _pageCount = Math.Max(1, (filtered.Count + PageSize - 1) / PageSize);
+            _page = Math.Clamp(_page, 0, _pageCount - 1);
+            var page = filtered.Skip(_page * PageSize).Take(PageSize).ToList();
+            var view = page.Select(record => new HistoryViewItem
+            {
+                Id = record.Id,
+                SizeLabel = record.IsRecording
+                    ? $"{record.Width} x {record.Height} - {record.MediaKind} {TimeSpan.FromMilliseconds(record.DurationMilliseconds):mm\\:ss}"
+                    : $"{record.Width} x {record.Height}",
+                TimeLabel = record.CreatedAt.ToString("MMM d  HH:mm:ss"),
+                SourceLabel = SourceLabel(record),
+                RecognitionLabel = RecognitionLabel(record),
+                EditLabel = L(record.IsRecording ? "Open" : "Edit"),
+                ContextLabel = L(_contextPreviewIds.Contains(record.Id) ? "Show result" : "Show context"),
+                ContextVisibility = record.HasContext ? Visibility.Visible : Visibility.Collapsed,
+                Title = string.IsNullOrWhiteSpace(record.Title) ? SourceLabel(record) : record.Title,
+                FavoriteGlyph = record.IsFavorite ? "★" : "☆",
+                ActiveVisibility = record.IsDeleted ? Visibility.Collapsed : Visibility.Visible,
+                DeletedVisibility = record.IsDeleted ? Visibility.Visible : Visibility.Collapsed
+            }).ToList();
+            HistoryList.ItemsSource = view;
+            PreviousPageButton.IsEnabled = _page > 0;
+            NextPageButton.IsEnabled = _page + 1 < _pageCount;
+            PageText.Text = $"{_page + 1} / {_pageCount}";
+            SummaryText.Text = filtered.Count == records.Count
+                ? records.Count == 1 ? L("1 saved item") : LocalizationService.Format("{0} saved items", records.Count)
+                : LocalizationService.Format("{0} of {1} saved items", filtered.Count, records.Count);
+            for (var index = 0; index < page.Count; index++)
+            {
+                cancellation.Token.ThrowIfCancellationRequested();
+                var record = page[index];
+                var context = _contextPreviewIds.Contains(record.Id);
+                var image = await Task.Run(() => _thumbnails.Load(record, context), cancellation.Token);
+                if (cancellation.IsCancellationRequested) return;
+                view[index].Thumbnail = image;
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { if (ReferenceEquals(_reloadCancellation, cancellation)) SummaryText.Text = ex.Message; }
+        finally
+        {
+            if (ReferenceEquals(_reloadCancellation, cancellation)) _reloadCancellation = null;
+            cancellation.Dispose();
+        }
     }
+
+    private void PreviousPage_Click(object sender, RoutedEventArgs e) { if (_page > 0) { _page--; BeginReload(false); } }
+    private void NextPage_Click(object sender, RoutedEventArgs e) { if (_page + 1 < _pageCount) { _page++; BeginReload(false); } }
 
     private bool MatchesFilters(CaptureRecord record)
     {
@@ -104,7 +152,7 @@ public partial class HistoryWindow : Window
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (IsLoaded) Reload();
+        if (IsLoaded) { _reloadCancellation?.Cancel(); _searchTimer.Stop(); _searchTimer.Start(); }
     }
 
     private void Filter_Changed(object sender, RoutedEventArgs e)
@@ -121,7 +169,7 @@ public partial class HistoryWindow : Window
     {
         if (RecordFrom(sender) is not { HasContext: true } record) return;
         if (!_contextPreviewIds.Add(record.Id)) _contextPreviewIds.Remove(record.Id);
-        Reload();
+        BeginReload(false);
     }
 
     private void Copy_Click(object sender, RoutedEventArgs e)
@@ -246,7 +294,7 @@ public partial class HistoryWindow : Window
         Reload();
     }
 
-    private static CaptureRecord? RecordFrom(object sender)
+    private CaptureRecord? RecordFrom(object sender)
     {
         var id = sender switch
         {
@@ -254,7 +302,7 @@ public partial class HistoryWindow : Window
             Image { Tag: string value } => value,
             _ => null
         };
-        return id is null ? null : HistoryService.Find(id);
+        return id is not null && _records.TryGetValue(id, out var record) ? record : null;
     }
 
     private static string RecognitionLabel(CaptureRecord record)
@@ -278,10 +326,16 @@ public partial class HistoryWindow : Window
 
     private static string L(string value) => LocalizationService.Current(value);
 
-    private sealed class HistoryViewItem
+    private sealed class HistoryViewItem : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private BitmapSource? _thumbnail;
         public string Id { get; init; } = string.Empty;
-        public BitmapSource? Thumbnail { get; init; }
+        public BitmapSource? Thumbnail
+        {
+            get => _thumbnail;
+            set { _thumbnail = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Thumbnail))); }
+        }
         public string SizeLabel { get; init; } = string.Empty;
         public string TimeLabel { get; init; } = string.Empty;
         public string SourceLabel { get; init; } = string.Empty;

@@ -47,6 +47,14 @@ internal sealed class AnnotationItem
     public string TextAlignment { get; set; } = "Left";
     public bool Outline { get; set; }
 
+    internal bool VisuallyEquals(AnnotationItem other) => Kind == other.Kind && X == other.X && Y == other.Y &&
+        Width == other.Width && Height == other.Height && Color == other.Color && Thickness == other.Thickness &&
+        Text == other.Text && Opacity == other.Opacity && FillOpacity == other.FillOpacity && Dashed == other.Dashed &&
+        ArrowHeads == other.ArrowHeads && EffectShape == other.EffectShape && Rotation == other.Rotation &&
+        FontFamily == other.FontFamily && Bold == other.Bold && Italic == other.Italic && Underline == other.Underline &&
+        Strikethrough == other.Strikethrough && TextAlignment == other.TextAlignment && Outline == other.Outline &&
+        Points.SequenceEqual(other.Points);
+
     public AnnotationItem Clone() => new()
     {
         Id = Id,

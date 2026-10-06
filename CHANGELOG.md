@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+- Merge settings changes by field so old editor/pin windows preserve newer preferences; cache capture settings and debounce annotation style saves.
+- Recover pin sessions from a previous generation when a PNG is corrupt; coalesce saves and reuse unchanged PNG encodings.
+- Store annotation revisions before committing the history index, retaining a complete recovery version and cleaning obsolete revisions.
+- Load history in pages of 60 with debounced search, background thumbnails, a bounded cache and width/height limits for long captures.
+- Stitch scrolling captures incrementally on a background worker with cancellation checks and a 64 MiB output-pixel budget.
+- Encode GIFs in the background using actual frame durations, cumulative delay rounding and reusable pixel buffers.
+- Move capture exports, annotation saves, recording imports and pin refresh persistence off the dispatcher; refresh only the selected screen region.
+- Reuse unchanged annotation visuals and append live stroke points; bound undo/redo history by count and estimated memory.
+- Initialize each OCR engine once, reuse OCR input between segmentation passes, limit concurrent work and discard stale UI results.
+- Add isolated regression tests for settings conflicts, corrupt PNG recovery, failed document commits, long thumbnails, GIF timing and annotation rendering.
+
 ## [2.1.30] - 2026-07-27
 
 - Fixed the whiteboard crash caused by sending logical inline text (`Run`) through WPF's visual-tree traversal.

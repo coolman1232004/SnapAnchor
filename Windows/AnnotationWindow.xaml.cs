@@ -816,7 +816,9 @@ public partial class AnnotationEditorControl : UserControl
             if (Distance(_last, point) < 1.5) return;
             item.Points.Add(point);
             _last = point;
-            RequestRender();
+            if (_renderedElements.TryGetValue(item.Id, out var live) && live is System.Windows.Shapes.Polyline line)
+                line.Points.Add(point);
+            else RequestRender();
             return;
         }
         else if (item.Kind is AnnotationKind.Line or AnnotationKind.Arrow)

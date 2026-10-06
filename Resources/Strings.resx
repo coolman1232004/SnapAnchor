@@ -1532,4 +1532,6 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="SnapAnchor {0} requires Windows build {1} or later. This computer is running build {2}." xml:space="preserve"><value>SnapAnchor {0} requires Windows build {1} or later. This computer is running build {2}.</value></data>
   <data name="Digitally signed package" xml:space="preserve"><value>Digitally signed package</value></data>
   <data name="Unsigned package - SHA-256 will be verified before it runs" xml:space="preserve"><value>Unsigned package - SHA-256 will be verified before it runs</value></data>
+  <data name="Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Next" xml:space="preserve"><value>Next</value></data>
 </root>

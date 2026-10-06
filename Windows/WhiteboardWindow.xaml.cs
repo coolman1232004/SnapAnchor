@@ -39,11 +39,17 @@ public partial class WhiteboardWindow : Window
 
     internal bool IsTransparentWhiteboard => _transparent;
 
-    private void Editor_Applied(AnnotationAppliedEventArgs args)
+    private async void Editor_Applied(AnnotationAppliedEventArgs args)
     {
-        Clipboard.SetImage(args.FlattenedImage);
-        HistoryService.Add(args.FlattenedImage, new Int32Rect(0, 0, args.FlattenedImage.PixelWidth, args.FlattenedImage.PixelHeight), args.BaseImage, "Whiteboard");
-        Close();
+        Editor.IsEnabled = false;
+        try
+        {
+            Clipboard.SetImage(args.FlattenedImage);
+            await HistoryService.AddAsync(args.FlattenedImage, new Int32Rect(0, 0, args.FlattenedImage.PixelWidth, args.FlattenedImage.PixelHeight), args.BaseImage, "Whiteboard");
+            Close();
+        }
+        catch (Exception ex) { MessageBox.Show(ex.Message, Title, MessageBoxButton.OK, MessageBoxImage.Information); }
+        finally { Editor.IsEnabled = true; }
     }
 
     private void FitToVirtualScreenPixels()

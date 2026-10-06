@@ -19,11 +19,33 @@ namespace SnapAnchor.RecognitionSmoke;
 internal static class Program
 {
     [STAThread]
-    private static async Task<int> Main()
+    private static async Task<int> Main(string[] args)
+    {
+        var isolation = Path.Combine(Path.GetTempPath(), $"snapanchor-smoke-state-{Guid.NewGuid():N}");
+        Environment.SetEnvironmentVariable("SNAPANCHOR_SETTINGS_ROOT", Path.Combine(isolation, "settings"));
+        Environment.SetEnvironmentVariable("SNAPANCHOR_SESSION_ROOT", Path.Combine(isolation, "session"));
+        try { return await RunAsync(args); }
+        catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
+        finally
+        {
+            try
+            {
+                await PersistenceQueue.FlushAsync();
+                await PinSessionService.QueueClear();
+                if (Directory.Exists(isolation)) Directory.Delete(isolation, true);
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"Test state cleanup failed: {ex.Message}"); }
+        }
+    }
+
+    private static async Task<int> RunAsync(string[] args)
     {
         if ((Path.GetFileNameWithoutExtension(Environment.ProcessPath) ?? string.Empty).Contains("AnnotationQa", StringComparison.OrdinalIgnoreCase))
             return RunAnnotationQa();
 
+        OptimizationSmoke.Run();
+        if (args.Contains("--optimizations", StringComparer.Ordinal)) return 0;
+        if (args.Contains("--recording", StringComparer.Ordinal)) { await OptimizationSmoke.RunRecordingAsync(); return 0; }
         LocalizationSmoke.Run();
         CompatibilitySmoke.Run(CreatePatternImage);
         UpdateUiSmoke.Run();

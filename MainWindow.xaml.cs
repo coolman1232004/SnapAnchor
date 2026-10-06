@@ -353,7 +353,7 @@ public partial class MainWindow : Window
         window.Show();
     }
 
-    private void RepeatLastRegion()
+    private async void RepeatLastRegion()
     {
         try
         {
@@ -367,7 +367,7 @@ public partial class MainWindow : Window
             var rect = new Int32Rect(region.X, region.Y, region.Width, region.Height);
             var image = CaptureService.Crop(fullScreen, rect);
             Clipboard.SetImage(image);
-            HistoryService.Add(image, rect, fullScreen, "Copied");
+            await HistoryService.AddAsync(image, rect, fullScreen, "Copied");
             System.Media.SystemSounds.Asterisk.Play();
         }
         catch (Exception ex)
@@ -461,7 +461,7 @@ public partial class MainWindow : Window
         StartCapture(CaptureCompletionMode.Interactive, options);
     }
 
-    private void CaptureActiveWindow()
+    private async void CaptureActiveWindow()
     {
         try
         {
@@ -481,7 +481,7 @@ public partial class MainWindow : Window
             var fullScreen = CaptureService.CaptureVirtualScreen();
             var image = CaptureService.Crop(fullScreen, region);
             Clipboard.SetImage(image);
-            var record = HistoryService.Add(image, region, fullScreen, "Window");
+            var record = await HistoryService.AddAsync(image, region, fullScreen, "Window");
             new PinnedImageWindow(image, startEditing: true, historyRecordId: record.Id).Show();
         }
         catch (Exception ex)
@@ -540,7 +540,7 @@ public partial class MainWindow : Window
             Forms.ToolTipIcon.Info);
     }
 
-    private void CaptureFullScreen()
+    private async void CaptureFullScreen()
     {
         try
         {
@@ -548,7 +548,7 @@ public partial class MainWindow : Window
             var fullScreen = CaptureService.CaptureVirtualScreen();
             var region = new Int32Rect(0, 0, fullScreen.PixelWidth, fullScreen.PixelHeight);
             Clipboard.SetImage(fullScreen);
-            var record = HistoryService.Add(fullScreen, region, fullScreen, "Full screen");
+            var record = await HistoryService.AddAsync(fullScreen, region, fullScreen, "Full screen");
             new PinnedImageWindow(fullScreen, startEditing: true, historyRecordId: record.Id).Show();
         }
         catch (Exception ex)
@@ -715,6 +715,7 @@ public partial class MainWindow : Window
         PinnedImageWindow.PinsChanged -= PinnedImageWindow_PinsChanged;
         try
         {
+            await PersistenceQueue.FlushAsync();
             await PinnedImageWindow.SaveSessionAsync();
         }
         catch (Exception ex)

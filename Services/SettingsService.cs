@@ -170,28 +170,28 @@ internal static class HotkeyOptions
 internal static class SettingsService
 {
     private static readonly object Sync = new();
-    private static readonly string SettingsDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnapAnchor");
+    private static readonly string SettingsDirectory = Environment.GetEnvironmentVariable("SNAPANCHOR_SETTINGS_ROOT") is { Length: > 0 } testRoot
+        ? Path.GetFullPath(testRoot)
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SnapAnchor");
     private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "settings.json");
+    private static readonly SettingsStore Store = new(SettingsPath);
 
     public static AppSettings Load()
     {
-        lock (Sync)
-        {
-            return AtomicFileService.TryReadJson<AppSettings>(SettingsPath, out var settings)
-                ? Normalize(settings!)
-                : new AppSettings();
-        }
+        return Store.Load();
     }
 
     public static void Save(AppSettings settings)
     {
         lock (Sync)
         {
-            AtomicFileService.WriteJson(SettingsPath, Normalize(settings));
+            var previousStartup = Store.Read(current => current.RunOnStartup);
+            Store.Save(settings);
+            if (previousStartup != settings.RunOnStartup) ApplyStartup(settings.RunOnStartup);
         }
-        ApplyStartup(settings.RunOnStartup);
     }
+
+    internal static T Read<T>(Func<AppSettings, T> read) => Store.Read(read);
 
     internal static AppSettings Normalize(AppSettings settings)
     {

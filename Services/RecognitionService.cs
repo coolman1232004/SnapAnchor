@@ -14,7 +14,7 @@ internal static class RecognitionService
 {
     private sealed class EngineHolder : IDisposable
     {
-        internal readonly object Sync = new();
+        internal readonly SemaphoreSlim Sync = new(1, 1);
         internal readonly TesseractEngine Engine;
         internal EngineHolder(string dataPath, string language)
         {
@@ -25,29 +25,34 @@ internal static class RecognitionService
 
         public void Dispose()
         {
-            lock (Sync) Engine.Dispose();
+            Sync.Wait();
+            try { Engine.Dispose(); } finally { Sync.Release(); }
         }
     }
 
     private sealed record OcrCandidate(string Text, IReadOnlyList<RecognizedWord> Words, double Score);
-    private static readonly ConcurrentDictionary<string, EngineHolder> Engines = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Lazy<EngineHolder>> Engines = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly SemaphoreSlim Workers = new(2, 2);
 
     static RecognitionService()
     {
         AppDomain.CurrentDomain.ProcessExit += (_, _) =>
         {
-            foreach (var holder in Engines.Values) holder.Dispose();
+            foreach (var holder in Engines.Values) if (holder.IsValueCreated) holder.Value.Dispose();
             Engines.Clear();
         };
     }
 
-    public static Task<RecognitionResult> RecognizeAsync(BitmapSource image, string language, CancellationToken cancellationToken = default)
+    public static async Task<RecognitionResult> RecognizeAsync(BitmapSource image, string language, CancellationToken cancellationToken = default)
     {
         var frozen = image.IsFrozen ? image : Freeze(image);
-        return Task.Run(() => Recognize(frozen, language, cancellationToken), cancellationToken);
+        var detectOrientation = SettingsService.Read(settings => settings.OcrDetectOrientation);
+        await Workers.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try { return await Task.Run(() => Recognize(frozen, language, detectOrientation, cancellationToken), cancellationToken).ConfigureAwait(false); }
+        finally { Workers.Release(); }
     }
 
-    private static RecognitionResult Recognize(BitmapSource image, string language, CancellationToken cancellationToken)
+    private static RecognitionResult Recognize(BitmapSource image, string language, bool detectOrientation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var errors = new List<string>();
@@ -63,14 +68,19 @@ internal static class RecognitionService
                 throw new DirectoryNotFoundException(LocalizationService.Current("OCR language files are missing."));
 
             var normalizedLanguage = NormalizeLanguage(language);
-            var holder = Engines.GetOrAdd(normalizedLanguage, key => new EngineHolder(dataPath, key));
+            var lazy = Engines.GetOrAdd(normalizedLanguage, key => new Lazy<EngineHolder>(() => new EngineHolder(dataPath, key), LazyThreadSafetyMode.ExecutionAndPublication));
+            EngineHolder holder;
+            try { holder = lazy.Value; }
+            catch { Engines.TryRemove(new KeyValuePair<string, Lazy<EngineHolder>>(normalizedLanguage, lazy)); throw; }
             OcrCandidate best;
-            lock (holder.Sync)
+            holder.Sync.Wait(cancellationToken);
+            try
             {
-                best = Process(holder.Engine, image, PageSegMode.Auto, 1, 0, image.PixelWidth, image.PixelHeight, cancellationToken);
+                using var input = Pix.LoadFromMemory(ToPngBytes(image));
+                best = Process(holder.Engine, image, PageSegMode.Auto, 1, 0, image.PixelWidth, image.PixelHeight, cancellationToken, input);
                 if (best.Score < 54)
                     best = Better(best, Process(holder.Engine, image, PageSegMode.SparseText, 1, 0,
-                        image.PixelWidth, image.PixelHeight, cancellationToken));
+                        image.PixelWidth, image.PixelHeight, cancellationToken, input));
 
                 if (best.Score < 60)
                 {
@@ -88,7 +98,7 @@ internal static class RecognitionService
                         image.PixelWidth, image.PixelHeight, cancellationToken));
                 }
 
-                if (best.Score < 42 && SettingsService.Load().OcrDetectOrientation)
+                if (best.Score < 42 && detectOrientation)
                 {
                     foreach (var angle in new[] { 90, 180, 270 })
                     {
@@ -99,9 +109,11 @@ internal static class RecognitionService
                     }
                 }
             }
+            finally { holder.Sync.Release(); }
             text = best.Text;
             words = best.Words;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             errors.Add($"OCR: {ex.Message}");
@@ -137,10 +149,12 @@ internal static class RecognitionService
     }
 
     private static OcrCandidate Process(TesseractEngine engine, BitmapSource image, PageSegMode mode, double scale,
-        int rotation, int originalWidth, int originalHeight, CancellationToken cancellationToken)
+        int rotation, int originalWidth, int originalHeight, CancellationToken cancellationToken, Pix? input = null)
     {
-        using var pix = Pix.LoadFromMemory(ToPngBytes(image));
-        using var page = engine.Process(pix, mode);
+        cancellationToken.ThrowIfCancellationRequested();
+        using var owned = input is null ? Pix.LoadFromMemory(ToPngBytes(image)) : null;
+        using var page = engine.Process(input ?? owned!, mode);
+        cancellationToken.ThrowIfCancellationRequested();
         var text = page.GetText()?.Trim() ?? string.Empty;
         var rawWords = ExtractWords(page, cancellationToken);
         var mapped = rawWords.Select(word => MapWord(word, scale, rotation, originalWidth, originalHeight)).ToList();
