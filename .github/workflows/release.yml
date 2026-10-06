@@ -114,7 +114,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Release draft creation failed; existing releases are never overwritten.' }
           gh release upload $tag .\dist\SnapAnchor-Portable-win-x64.zip .\dist\SnapAnchor-Setup-win-x64.exe .\dist\release.json
           if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed; the release remains a draft.' }
-          $release = gh api "repos/$env:GH_REPO/releases/tags/$tag" | ConvertFrom-Json
+          $releaseId = gh release view $tag --json databaseId --jq '.databaseId'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the draft release ID.' }
+          $release = gh api "repos/$env:GH_REPO/releases/$releaseId" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Could not verify uploaded release assets.' }
           foreach ($expected in @('SnapAnchor-Portable-win-x64.zip', 'SnapAnchor-Setup-win-x64.exe', 'release.json')) {
             $localAsset = Get-Item (Join-Path 'dist' $expected)
