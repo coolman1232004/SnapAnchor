@@ -120,6 +120,10 @@ internal static class LocalizationService
             !BindingOperations.IsDataBound(element, FrameworkElement.ToolTipProperty) && element.ToolTip is string tip)
             element.ToolTip = Translate(tip, language);
 
+        if (!BindingOperations.IsDataBound(value, System.Windows.Automation.AutomationProperties.NameProperty) &&
+            System.Windows.Automation.AutomationProperties.GetName(value) is { Length: > 0 } accessibleName)
+            System.Windows.Automation.AutomationProperties.SetName(value, Translate(accessibleName, language));
+
         if (value is ListView { View: GridView grid })
             foreach (var column in grid.Columns)
                 if (column.Header is string columnHeader) column.Header = Translate(columnHeader, language);

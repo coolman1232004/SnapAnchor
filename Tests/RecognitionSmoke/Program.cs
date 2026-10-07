@@ -40,6 +40,7 @@ internal static class Program
 
     private static async Task<int> RunAsync(string[] args)
     {
+        if (args.Contains("--workspace-ui", StringComparer.Ordinal)) return RunSta(WorkspaceUiSmoke.Run);
         if ((Path.GetFileNameWithoutExtension(Environment.ProcessPath) ?? string.Empty).Contains("AnnotationQa", StringComparison.OrdinalIgnoreCase))
             return RunAnnotationQa();
 
@@ -393,8 +394,8 @@ internal static class Program
             var window = new MainWindow();
             var capture = (Button)window.FindName("CaptureButton");
             var pin = (Button)window.FindName("PinClipboardButton");
-            var card = (Border)window.FindName("CaptureOverviewCard");
-            var shortcutPanel = (Border)window.FindName("ShortcutPanel");
+            var pageHost = (ContentControl)window.FindName("PageHost");
+            var navigation = (RadioButton)window.FindName("WorkspaceNavigation");
             var tray = (System.Windows.Forms.NotifyIcon?)typeof(MainWindow)
                 .GetField("_trayIcon", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .GetValue(window);
@@ -402,24 +403,24 @@ internal static class Program
             var hasGitHubUpdateCommand = tray?.ContextMenuStrip?.Items
                 .OfType<System.Windows.Forms.ToolStripItem>()
                 .Any(item => item.Text == "Check for updates…") == true;
-            var matches = IsColor(window.Background, 0xFA, 0xF9, 0xF7) &&
-                IsColor(capture.Background, 0x29, 0x25, 0x24) &&
-                IsColor(pin.Background, 0xE7, 0xE5, 0xE4) &&
-                IsColor(card.Background, 0xFF, 0xFF, 0xFF) &&
-                IsColor(shortcutPanel.BorderBrush, 0xE7, 0xE5, 0xE4) &&
+            var matches = IsColor(window.Background, 0xF6, 0xF7, 0xF9) &&
+                IsColor(capture.Background, 0x00, 0x67, 0xC0) &&
+                IsColor(pin.Background, 0xFF, 0xFF, 0xFF) &&
+                pageHost.Content is HistoryView &&
+                navigation.IsChecked == true &&
                 taskbarIcon is { PixelWidth: >= 32, PixelHeight: >= 32 } &&
                 hasGitHubUpdateCommand;
             window.DisposeLayoutPreview();
             return matches;
         });
         if (!dashboardPaletteMatches) return 50;
-        Console.WriteLine("DASHBOARD PALETTE: warm neutral background, charcoal actions and white cards verified");
+        Console.WriteLine("DASHBOARD WORKSPACE: shared cool surfaces, blue capture action, recent-history host and sidebar navigation verified");
 
         var aboutEdition = RunSta(() =>
         {
             var preferences = new PreferencesWindow(new AppSettings());
-            var edition = ((TextBlock)preferences.FindName("EditionText")).Text;
-            var copyButton = ((Button)preferences.FindName("CopyVersionButton")).Content as string == "Copy version information";
+            var edition = ((TextBlock)preferences.View.FindName("EditionText")).Text;
+            var copyButton = ((Button)preferences.View.FindName("CopyVersionButton")).Content as string == "Copy version information";
             var icon = preferences.Icon as BitmapSource;
             return (Edition: edition, CopyButton: copyButton, Icon: icon is { PixelWidth: >= 32, PixelHeight: >= 32 });
         });
@@ -639,12 +640,9 @@ internal static class Program
             var historyPreview = RunSta(() =>
             {
                 var window = new HistoryWindow();
-                if (window.Width != 1120 || window.Height != 760 ||
-                    window.Background is not SolidColorBrush { Color: var background } || background != Color.FromRgb(250, 249, 247) ||
-                    window.FindName("FilterPanel") is not Border { CornerRadius: var radius } || radius.TopLeft != 12 ||
-                    window.FindName("BackToDashboardButton") is not Button)
-                    throw new InvalidOperationException("History window does not use the redesigned light layout.");
-                var itemType = typeof(HistoryWindow).GetNestedType("HistoryViewItem", System.Reflection.BindingFlags.NonPublic)
+                if (window.Width != 1080 || window.Height != 760 || window.View.FindName("FilterPanel") is not StackPanel)
+                    throw new InvalidOperationException("History window does not use the shared gallery view.");
+                var itemType = typeof(HistoryView).GetNestedType("HistoryViewItem", System.Reflection.BindingFlags.NonPublic)
                     ?? throw new InvalidOperationException("History preview item type is missing.");
                 var previewItems = Array.CreateInstance(itemType, 3);
                 for (var index = 0; index < previewItems.Length; index++)
@@ -666,8 +664,8 @@ internal static class Program
                     Set("DeletedVisibility", Visibility.Collapsed);
                     previewItems.SetValue(item, index);
                 }
-                ((ListBox)window.FindName("HistoryList")).ItemsSource = previewItems;
-                ((TextBlock)window.FindName("SummaryText")).Text = "43 saved items";
+                ((ListBox)window.View.FindName("HistoryList")).ItemsSource = previewItems;
+                ((TextBlock)window.View.FindName("SummaryText")).Text = "43 saved items";
                 var content = (FrameworkElement)window.Content;
                 window.Content = null;
                 var host = new Border
@@ -708,18 +706,18 @@ internal static class Program
                         Opacity = 0
                     };
                     window.Show();
-                    var tabs = (TabControl)window.FindName("Tabs");
+                    var tabs = (TabControl)window.View.FindName("Tabs");
                     tabs.SelectedIndex = selectedTab;
                     var content = (FrameworkElement)window.Content;
                     content.InvalidateMeasure();
-                    content.Measure(new Size(620, 470));
-                    content.Arrange(new Rect(0, 0, 620, 470));
+                    content.Measure(new Size(900, 700));
+                    content.Arrange(new Rect(0, 0, 900, 700));
                     content.UpdateLayout();
                     content.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
-                    content.Measure(new Size(620, 470));
-                    content.Arrange(new Rect(0, 0, 620, 470));
+                    content.Measure(new Size(900, 700));
+                    content.Arrange(new Rect(0, 0, 900, 700));
                     content.UpdateLayout();
-                    var rendered = new RenderTargetBitmap(620, 470, 96, 96, PixelFormats.Pbgra32);
+                    var rendered = new RenderTargetBitmap(900, 700, 96, 96, PixelFormats.Pbgra32);
                     rendered.Render(content);
                     rendered.Freeze();
                     window.Close();
@@ -921,21 +919,21 @@ internal static class Program
         var toolbarPreferencesAreSwapped = RunSta(() =>
         {
             var preferences = new PreferencesWindow(new AppSettings());
-            var annotationPanel = (StackPanel)preferences.FindName("AnnotationToolbarSettingsPanel");
-            var capturePanel = (StackPanel)preferences.FindName("CaptureToolbarSettingsPanel");
-            var tabs = (TabControl)preferences.FindName("Tabs");
-            var dailyUpdates = (CheckBox)preferences.FindName("CheckUpdatesDailyBox");
+            var annotationPanel = (StackPanel)preferences.View.FindName("AnnotationToolbarSettingsPanel");
+            var capturePanel = (StackPanel)preferences.View.FindName("CaptureToolbarSettingsPanel");
+            var tabs = (TabControl)preferences.View.FindName("Tabs");
+            var dailyUpdates = (CheckBox)preferences.View.FindName("CheckUpdatesDailyBox");
             var everyTabScrolls = tabs.Items.OfType<TabItem>().All(tab =>
                 tab.Content is ScrollViewer scrollViewer &&
                 scrollViewer.VerticalScrollBarVisibility == ScrollBarVisibility.Auto);
             var result = Grid.GetColumn(annotationPanel) == 0 && Grid.GetColumn(capturePanel) == 2 &&
                 everyTabScrolls && dailyUpdates.IsChecked == false &&
-                preferences.Width == 620 && preferences.Height == 470;
+                preferences.Width == 900 && preferences.Height == 700;
             preferences.Close();
             return result;
         });
         if (!toolbarPreferencesAreSwapped) return 75;
-        Console.WriteLine("PREFERENCES LAYOUT: compact 620 x 470 dialog; every tab scrolls; toolbar columns remain ordered");
+        Console.WriteLine("PREFERENCES LAYOUT: readable 900 x 700 window, sidebar categories and scrollable content verified");
 
         var captureToolbarMatches = RunSta(() =>
         {

@@ -1,13 +1,9 @@
 <UserControl x:Class="SnapAnchor.Controls.AnnotationEditorControl"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Background="Transparent" Foreground="#334155" Focusable="True" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Background="Transparent" Foreground="{DynamicResource TextBrush}" Focusable="True" UseLayoutRounding="True" SnapsToDevicePixels="True"
         KeyDown="Window_KeyDown">
     <UserControl.Resources>
-        <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="/SnapAnchor;component/Resources/ToolbarResources.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
             <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource SnapAnchorToolbarButtonStyle}"/>
             <Style x:Key="ActionIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}"/>
             <Style x:Key="PropertyButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
@@ -18,7 +14,6 @@
                 <Setter Property="BorderBrush" Value="#D1D5DB"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Focusable" Value="False"/><Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             </Style>
-        </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>

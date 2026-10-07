@@ -1534,4 +1534,85 @@ You can review the local diagnostic log in Preferences &gt; About.</value></data
   <data name="Unsigned package - SHA-256 will be verified before it runs" xml:space="preserve"><value>Unsigned package - SHA-256 will be verified before it runs</value></data>
   <data name="Previous" xml:space="preserve"><value>Previous</value></data>
   <data name="Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Capture · annotate · pin" xml:space="preserve">
+    <value>Capture · annotate · pin</value>
+  </data>
+  <data name="Capture a region to get started, or adjust your search and filters." xml:space="preserve">
+    <value>Capture a region to get started, or adjust your search and filters.</value>
+  </data>
+  <data name="Choose color" xml:space="preserve">
+    <value>Choose color</value>
+  </data>
+  <data name="Color (ARGB)" xml:space="preserve">
+    <value>Color (ARGB)</value>
+  </data>
+  <data name="Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Follow Windows" xml:space="preserve">
+    <value>Follow Windows</value>
+  </data>
+  <data name="Discard unsaved settings changes?" xml:space="preserve">
+    <value>Discard unsaved settings changes?</value>
+  </data>
+  <data name="Enter a valid color, such as #FF0067C0." xml:space="preserve">
+    <value>Enter a valid color, such as #FF0067C0.</value>
+  </data>
+  <data name="Filters" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="No captures to show" xml:space="preserve">
+    <value>No captures to show</value>
+  </data>
+  <data name="Print Screen" xml:space="preserve">
+    <value>Print Screen</value>
+  </data>
+  <data name="Select a capture" xml:space="preserve">
+    <value>Select a capture</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Workspace" xml:space="preserve">
+    <value>Workspace</value>
+  </data>
+  <data name="Your recent captures, ready to copy, edit or pin." xml:space="preserve">
+    <value>Your recent captures, ready to copy, edit or pin.</value>
+  </data>
+  <data name="Manage the images pinned to your desktop." xml:space="preserve">
+    <value>Manage the images pinned to your desktop.</value>
+  </data>
+  <data name="Find, organize and reopen your saved captures." xml:space="preserve">
+    <value>Find, organize and reopen your saved captures.</value>
+  </data>
+  <data name="Make SnapAnchor work the way you do." xml:space="preserve">
+    <value>Make SnapAnchor work the way you do.</value>
+  </data>
+  <data name="History options" xml:space="preserve">
+    <value>History options</value>
+  </data>
+  <data name="Search captures" xml:space="preserve">
+    <value>Search captures</value>
+  </data>
+  <data name="Capture source" xml:space="preserve">
+    <value>Capture source</value>
+  </data>
+  <data name="Capture type" xml:space="preserve">
+    <value>Capture type</value>
+  </data>
+  <data name="Capture date" xml:space="preserve">
+    <value>Capture date</value>
+  </data>
+  <data name="More capture actions" xml:space="preserve">
+    <value>More capture actions</value>
+  </data>
 </root>

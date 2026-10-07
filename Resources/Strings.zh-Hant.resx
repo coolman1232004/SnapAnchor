@@ -1534,4 +1534,85 @@
   <data name="Unsigned package - SHA-256 will be verified before it runs" xml:space="preserve"><value>未簽署的套件 - 執行前將驗證 SHA-256</value></data>
   <data name="Previous" xml:space="preserve"><value>上一頁</value></data>
   <data name="Next" xml:space="preserve"><value>下一頁</value></data>
+  <data name="Appearance" xml:space="preserve">
+    <value>外觀</value>
+  </data>
+  <data name="Capture · annotate · pin" xml:space="preserve">
+    <value>截圖 · 標註 · 貼圖</value>
+  </data>
+  <data name="Capture a region to get started, or adjust your search and filters." xml:space="preserve">
+    <value>截取一個區域以開始使用，或調整搜尋及篩選條件。</value>
+  </data>
+  <data name="Choose color" xml:space="preserve">
+    <value>選擇顏色</value>
+  </data>
+  <data name="Color (ARGB)" xml:space="preserve">
+    <value>顏色（ARGB）</value>
+  </data>
+  <data name="Dark" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="Light" xml:space="preserve">
+    <value>淺色</value>
+  </data>
+  <data name="Follow Windows" xml:space="preserve">
+    <value>跟隨 Windows</value>
+  </data>
+  <data name="Discard unsaved settings changes?" xml:space="preserve">
+    <value>放棄尚未儲存的設定變更？</value>
+  </data>
+  <data name="Enter a valid color, such as #FF0067C0." xml:space="preserve">
+    <value>請輸入有效顏色，例如 #FF0067C0。</value>
+  </data>
+  <data name="Filters" xml:space="preserve">
+    <value>篩選</value>
+  </data>
+  <data name="More" xml:space="preserve">
+    <value>更多</value>
+  </data>
+  <data name="No captures to show" xml:space="preserve">
+    <value>沒有可顯示的截圖</value>
+  </data>
+  <data name="Print Screen" xml:space="preserve">
+    <value>Print Screen</value>
+  </data>
+  <data name="Select a capture" xml:space="preserve">
+    <value>選取一張截圖</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>設定</value>
+  </data>
+  <data name="Workspace" xml:space="preserve">
+    <value>工作區</value>
+  </data>
+  <data name="Your recent captures, ready to copy, edit or pin." xml:space="preserve">
+    <value>最近的截圖，隨時複製、編輯或貼圖。</value>
+  </data>
+  <data name="Manage the images pinned to your desktop." xml:space="preserve">
+    <value>管理固定在桌面的圖片。</value>
+  </data>
+  <data name="Find, organize and reopen your saved captures." xml:space="preserve">
+    <value>尋找、整理及重新開啟已儲存的截圖。</value>
+  </data>
+  <data name="Make SnapAnchor work the way you do." xml:space="preserve">
+    <value>按你的習慣設定 SnapAnchor。</value>
+  </data>
+  <data name="History options" xml:space="preserve">
+    <value>歷史紀錄選項</value>
+  </data>
+  <data name="Search captures" xml:space="preserve">
+    <value>搜尋截圖</value>
+  </data>
+  <data name="Capture source" xml:space="preserve">
+    <value>截圖來源</value>
+  </data>
+  <data name="Capture type" xml:space="preserve">
+    <value>截圖類型</value>
+  </data>
+  <data name="Capture date" xml:space="preserve">
+    <value>截圖日期</value>
+  </data>
+  <data name="More capture actions" xml:space="preserve">
+    <value>更多截圖操作</value>
+  </data>
 </root>

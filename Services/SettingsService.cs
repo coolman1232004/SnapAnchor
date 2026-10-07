@@ -20,6 +20,7 @@ public sealed class AppSettings
     public bool AutoBackup { get; set; } = true;
     public bool KeepResponsive { get; set; } = true;
     public string UiLanguage { get; set; } = "English";
+    public string AppearanceMode { get; set; } = "System";
     public bool CheckUpdatesOnStartup { get; set; } = true;
     public bool CheckUpdatesDaily { get; set; }
     public int CaptureBorderWidth { get; set; } = 2;
@@ -286,6 +287,7 @@ internal static class SettingsService
             : CaptureToolbarCatalog.NormalizeEnabled(previousCaptureEnabled);
         settings.ToolbarSizeMode = ToolbarThemeService.Normalize(settings.ToolbarSizeMode);
         settings.UiLanguage = LocalizationService.Normalize(settings.UiLanguage);
+        settings.AppearanceMode = ApplicationThemeService.Normalize(settings.AppearanceMode);
         if (string.Equals(settings.CaptureBorderColor, "#63E6BE", StringComparison.OrdinalIgnoreCase))
             settings.CaptureBorderColor = "#3388FF";
         settings.PinGroups = settings.PinGroups

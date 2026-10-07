@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-07
+
+- Replace the introductory dashboard with a Windows 11 style workspace, recent captures and consistent sidebar navigation for pins, history and settings.
+- Share the real history view between the workspace and library, with responsive image cards, a selected-item command bar, accessible focus and secondary actions in menus.
+- Reorganize all ten settings categories into a readable sidebar layout, preserve explicit save/cancel behavior and protect unsaved edits during navigation.
+- Add system, light and dark appearance modes, shared application/toolbar resources, high-contrast support and ARGB color pickers that preserve transparency.
+- Align OCR and recording review controls with the application style, retain all capture tools and add localized screen-reader labels.
+- Add isolated WPF checks for navigation, history filters, recycle/restore, settings persistence, themes, colors, three languages and constrained/DPI layouts.
+
 ## [2.1.31] - 2026-10-06
 
 - Merge settings changes by field so old editor/pin windows preserve newer preferences; cache capture settings and debounce annotation style saves.

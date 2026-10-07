@@ -84,6 +84,7 @@ public partial class CaptureOverlayWindow : Window
 
     public CaptureOverlayWindow(BitmapSource screen, CaptureCompletionMode completionMode = CaptureCompletionMode.Interactive, CaptureOptions? options = null)
     {
+        ApplicationThemeService.EnsureResources(this);
         InitializeComponent();
         _screen = screen;
         _regionHistory = HistoryService.RecentRegions();

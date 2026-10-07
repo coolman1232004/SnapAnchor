@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using SnapAnchor.Services;
 using SnapAnchor.Windows;
 using SnapAnchor.Models;
+using SnapAnchor.Controls;
 using Forms = System.Windows.Forms;
 
 namespace SnapAnchor;
@@ -42,31 +43,40 @@ public partial class MainWindow : Window
     private bool _hotkeyConflictBalloonShown;
     private Guid? _lastDesktopId;
     private UpdateCheckResult? _availableUpdate;
+    private HistoryView? _historyView;
+    private PreferencesView? _preferencesView;
+    private string _page = "workspace";
+    private bool _navigationReady;
 
-    public MainWindow()
+    public MainWindow() : this(false) { }
+
+    internal MainWindow(bool layoutPreview)
     {
+        ApplicationThemeService.EnsureResources(this);
         InitializeComponent();
         DpiLayoutService.Attach(this);
         _settings = SettingsService.Load();
-        CaptureHotkeyCombo.ItemsSource = HotkeyOptions.All;
         RefreshDefinitions();
         RefreshDashboard();
         LocalizationService.Apply(this, _settings.UiLanguage);
         AccessibilityService.Apply(this);
-        SourceInitialized += MainWindow_SourceInitialized;
+        if (!layoutPreview) SourceInitialized += MainWindow_SourceInitialized;
         StateChanged += (_, _) =>
         {
             if (WindowState == WindowState.Minimized && _settings.KeepResponsive) Hide();
         };
         Closing += MainWindow_Closing;
-        CreateTrayIcon();
+        if (!layoutPreview) CreateTrayIcon();
         PinnedImageWindow.PinsChanged += PinnedImageWindow_PinsChanged;
         _sessionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
         _sessionTimer.Tick += (_, _) => _ = PinnedImageWindow.SaveSessionAsync();
-        _sessionTimer.Start();
+        if (!layoutPreview) _sessionTimer.Start();
         _desktopTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _desktopTimer.Tick += (_, _) => CheckVirtualDesktop();
-        _desktopTimer.Start();
+        if (!layoutPreview) _desktopTimer.Start();
+        _navigationReady = true;
+        WorkspaceNavigation.IsChecked = true;
+        Activated += (_, _) => { if (_page is "workspace" or "history") _historyView?.Refresh(); };
     }
 
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
@@ -135,7 +145,7 @@ public partial class MainWindow : Window
 
     private void UpdateHotkeyStatus(bool success)
     {
-        StatusDot.Fill = success ? (System.Windows.Media.Brush)FindResource("AccentBrush") : System.Windows.Media.Brushes.Orange;
+        StatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, success ? "SuccessBrush" : "DangerBrush");
         StatusText.Text = success
             ? $"{L("Capture")}: {_captureHotkey.DisplayName}  ·  {L("Pin")}: {_pasteHotkey.DisplayName}"
             : L("One or more selected shortcuts are already used by Windows or another app");
@@ -167,9 +177,9 @@ public partial class MainWindow : Window
 
     private void RefreshDashboard()
     {
-        CaptureHotkeyCombo.SelectedValue = _captureHotkey.Name;
-        CaptureButton.Content = $"{L("Capture region")}  ·  {_captureHotkey.DisplayName}";
-        DrawScreenButton.Content = $"{L("Draw")}  ·  {_drawingHotkey.DisplayName}";
+        CaptureLabel.Text = L("Capture region");
+        CaptureKeyLabel.Text = _captureHotkey.DisplayName;
+        PinKeyLabel.Text = _pasteHotkey.DisplayName;
         RefreshPinManager();
     }
 
@@ -307,14 +317,6 @@ public partial class MainWindow : Window
         RefreshTrayMenu();
     }
 
-    private void SaveHotkey_Click(object sender, RoutedEventArgs e)
-    {
-        if (CaptureHotkeyCombo.SelectedValue is not string selectedName) return;
-        _settings.CaptureHotkey = selectedName;
-        SettingsService.Save(_settings);
-        ApplySettings();
-    }
-
     private void Preferences_Click(object sender, RoutedEventArgs e) => OpenPreferences();
     private void History_Click(object sender, RoutedEventArgs e) => OpenHistory();
     private void CaptureButton_Click(object sender, RoutedEventArgs e) => StartCapture();
@@ -323,11 +325,85 @@ public partial class MainWindow : Window
 
     private void OpenPreferences()
     {
-        MoveDashboardToCurrentDesktop();
-        var dialog = new PreferencesWindow(_settings) { Owner = this };
-        dialog.SettingsApplied += (_, _) => ApplySettings();
-        dialog.ShowDialog();
+        ShowDashboard();
+        SettingsNavigation.IsChecked = true;
     }
+
+    private void Navigation_Checked(object sender, RoutedEventArgs e)
+    {
+        if (!_navigationReady || sender is not System.Windows.Controls.RadioButton { Tag: string page }) return;
+        if (_page == "settings" && page != _page && _preferencesView?.ConfirmDiscardChanges() == false)
+        {
+            _navigationReady = false;
+            SettingsNavigation.IsChecked = true;
+            _navigationReady = true;
+            return;
+        }
+        ShowPage(page);
+    }
+
+    internal void ShowPage(string page)
+    {
+        _navigationReady = false;
+        (page switch { "pins" => PinsNavigation, "history" => HistoryNavigation, "settings" => SettingsNavigation, _ => WorkspaceNavigation }).IsChecked = true;
+        _navigationReady = true;
+        _page = page;
+        PinsPane.Visibility = page == "pins" ? Visibility.Visible : Visibility.Collapsed;
+        PageHost.Visibility = page == "pins" ? Visibility.Collapsed : Visibility.Visible;
+        CaptureActions.Visibility = page == "settings" ? Visibility.Collapsed : Visibility.Visible;
+        UpdateHeadingLayout();
+        PageTitle.Text = L(page switch { "pins" => "Pins", "history" => "Capture history", "settings" => "Settings", _ => "Workspace" });
+        PageDescription.Text = L(page switch
+        {
+            "pins" => "Manage the images pinned to your desktop.",
+            "history" => "Find, organize and reopen your saved captures.",
+            "settings" => "Make SnapAnchor work the way you do.",
+            _ => "Your recent captures, ready to copy, edit or pin."
+        });
+        if (page == "settings")
+        {
+            _preferencesView = new PreferencesView(_settings);
+            _preferencesView.SettingsApplied += (_, _) => ApplySettings();
+            _preferencesView.Completed += (_, _) => { _preferencesView = null; WorkspaceNavigation.IsChecked = true; };
+            _preferencesView.Cancelled += (_, _) => { _preferencesView = null; WorkspaceNavigation.IsChecked = true; };
+            PageHost.Content = _preferencesView;
+        }
+        else
+        {
+            _preferencesView = null;
+            if (page == "pins") { PageHost.Content = null; RefreshPinManager(); return; }
+            if (_historyView is null)
+            {
+                _historyView = new HistoryView();
+                _historyView.RepeatLastRequested += (_, _) => RepeatLastRegion();
+            }
+            _historyView.ConfigureWorkspace(page == "workspace");
+            PageHost.Content = _historyView;
+        }
+    }
+
+    private void MoreTools_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { ContextMenu: { } menu } button) { menu.PlacementTarget = button; menu.IsOpen = true; }
+    }
+    private void PageLayout_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateHeadingLayout();
+    private void UpdateHeadingLayout()
+    {
+        if (CaptureActions is null || PageHeading is null) return;
+        var inline = PageLayout.ActualWidth >= 800 && CaptureActions.Visibility == Visibility.Visible;
+        System.Windows.Controls.Grid.SetRow(CaptureActions, inline ? 0 : 1);
+        CaptureActions.HorizontalAlignment = inline ? HorizontalAlignment.Right : HorizontalAlignment.Left;
+        CaptureActions.Margin = inline ? new Thickness(0, 2, 0, 16) : new Thickness(0, 0, 0, 16);
+        PageHeading.MaxWidth = inline ? Math.Max(180, PageLayout.ActualWidth - Math.Max(420, CaptureActions.DesiredSize.Width) - 20) : double.PositiveInfinity;
+    }
+    private void ActiveWindow_Click(object sender, RoutedEventArgs e) => CaptureActiveWindow();
+    private void FullScreen_Click(object sender, RoutedEventArgs e) => CaptureFullScreen();
+    private void CustomCapture_Click(object sender, RoutedEventArgs e) => OpenCustomCapture();
+    private void RepeatRegion_Click(object sender, RoutedEventArgs e) => RepeatLastRegion();
+    private void RecordRegion_Click(object sender, RoutedEventArgs e) => StartCapture(CaptureCompletionMode.RecordOnSelection);
+    private void ColourPicker_Click(object sender, RoutedEventArgs e) => StartCapture(CaptureCompletionMode.ColorPicker);
+    private void Whiteboard_Click(object sender, RoutedEventArgs e) => OpenWhiteboard(false);
+    private void TransparentWhiteboard_Click(object sender, RoutedEventArgs e) => OpenWhiteboard(true);
 
     private async Task CheckForUpdatesAsync()
     {
@@ -347,10 +423,8 @@ public partial class MainWindow : Window
 
     private void OpenHistory()
     {
-        MoveDashboardToCurrentDesktop();
-        var window = new HistoryWindow { Owner = this };
-        window.RepeatLastRequested += (_, _) => RepeatLastRegion();
-        window.Show();
+        ShowDashboard();
+        HistoryNavigation.IsChecked = true;
     }
 
     private async void RepeatLastRegion()

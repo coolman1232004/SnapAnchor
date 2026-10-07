@@ -83,6 +83,7 @@ public partial class AnnotationEditorControl : UserControl
 
     public AnnotationEditorControl()
     {
+        ApplicationThemeService.EnsureResources(this);
         _settings = SettingsService.Load();
         ToolbarThemeService.ApplyTo(Resources, _settings.ToolbarSizeMode);
         _toolSizes["Shape"] = _settings.AnnotationShapeSize;

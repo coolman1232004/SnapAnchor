@@ -33,7 +33,7 @@ $xamlFiles = @(
 $xamlFiles |
     ForEach-Object {
         $text = Get-Content -Raw -LiteralPath $_.FullName -Encoding UTF8
-        foreach ($match in [regex]::Matches($text, '(?:Content|Text|Header|ToolTip|Title)="([^"]+)"')) {
+        foreach ($match in [regex]::Matches($text, '(?:Content|Text|Header|ToolTip|Title|AutomationProperties\.Name)="([^"]+)"')) {
             $value = [System.Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
             if ($value -notmatch '^\{' -and $value -match '[A-Za-z]{2}') { [void]$used.Add($value) }
         }

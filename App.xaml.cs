@@ -19,6 +19,7 @@ public partial class App : System.Windows.Application
         var settings = SettingsService.Load();
         LocalizationService.Configure(settings.UiLanguage);
         LocalizationService.EnableAutomaticLocalization();
+        ApplicationThemeService.Apply(settings.AppearanceMode);
         if (PortableUpdateRequest.IsUpdateCommand(e.Args))
         {
             base.OnStartup(e);
